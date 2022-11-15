@@ -19,8 +19,12 @@ import android.os.ServiceSpecificException;
 import android.util.Log;
 
 import com.qualcomm.qti.server.qtiwifi.util.GeneralUtil.Mutable;
+import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.NoSuchElementException;
 
 /**
@@ -33,6 +37,7 @@ public class QtiSupplicantStaIfaceHalAidlImpl implements IQtiSupplicantStaIfaceH
 
     private final Object mLock = new Object();
     private String mVendorIfaceName = null;
+    private Set<String> mActiveInterfaces = new HashSet<>();
 
     // Supplicant AIDL interface objects
     private ISupplicantVendor mISupplicantVendor = null;
@@ -271,6 +276,36 @@ public class QtiSupplicantStaIfaceHalAidlImpl implements IQtiSupplicantStaIfaceH
             }
             return reply.value;
          }
+    }
+
+    public String[] listVendorInterfaces() {
+        synchronized (mLock) {
+            String methodStr = "listVendorInterfaces";
+            if (mActiveInterfaces != null && mActiveInterfaces.size() > 0) {
+                return (String[])mActiveInterfaces.toArray();
+            }
+            try {
+                IVendorIfaceInfo[] ifaceInfos = mISupplicantVendor.listVendorInterfaces();
+                if (ifaceInfos == null || ifaceInfos.length == 0) {
+                    return null;
+                }
+                ArrayList<String> ifaceNames = new ArrayList<String>();
+                for (IVendorIfaceInfo iface : ifaceInfos) {
+                    ifaceNames.add(iface.name);
+                }
+                String[] ifaces = ifaceNames.toArray(new String[ifaceNames.size()]);
+                return ifaces;
+            } catch (RemoteException e) {
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                handleServiceSpecificException(e, methodStr);
+            }
+            return null;
+        }
+    }
+
+    public void registerWifiHalListener(WifiHalListener listener) {
+        //not implement
     }
 }
 

@@ -33,6 +33,8 @@
 
 package com.qualcomm.qti.qtiwifi;
 import com.qualcomm.qti.qtiwifi.ICsiCallback;
+import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
 
 interface IQtiWifiManager
 {
@@ -40,4 +42,9 @@ interface IQtiWifiManager
     void stopCsi();
     void registerCsiCallback(in IBinder binder, in ICsiCallback callback, int callbackIdentifier);
     void unregisterCsiCallback(int callbackIdentifier);
+    List<String> getAvailableInterfaces();
+    void registerVendorEventCallback(in IVendorEventCallback callback, in int callbackIdentifier);
+    void unregisterVendorEventCallback(in int callbackIdentifier);
+    ThermalData getThermalInfo(String ifname);
+    boolean setTxPower(String ifname, int dbm);
 }
