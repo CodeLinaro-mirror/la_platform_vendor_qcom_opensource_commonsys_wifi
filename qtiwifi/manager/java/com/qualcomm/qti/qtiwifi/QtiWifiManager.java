@@ -45,6 +45,8 @@ import android.content.ComponentName;
 import android.content.Intent;
 import java.util.List;
 
+import com.qualcomm.qti.qtiwifi.ThermalData;
+
 public class QtiWifiManager {
     private static final String TAG = "QtiWifiManager";
     private static ApplicationBinderCallback mApplicationCallback = null;
@@ -121,6 +123,84 @@ public class QtiWifiManager {
         public abstract void onAvailable(QtiWifiManager manager);
     }
 
+    public List<String> getAvailableInterfaces() {
+        try {
+            return mService.getAvailableInterfaces();
+        } catch (RemoteException e) {
+            Log.e(TAG, "getAvailableInterfaces: " + e);
+            return null;
+        }
+    }
+
+    private static class VendorEventCallbackProxy extends IVendorEventCallback.Stub {
+        private final Handler mHandler;
+        private final VendorEventCallback mCallback;
+
+        VendorEventCallbackProxy(Looper looper, VendorEventCallback callback) {
+            mHandler = new Handler(looper);
+            mCallback = callback;
+        }
+
+        @Override
+        public void onThermalChanged(String ifname, int thermal_state) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onThermalChanged(ifname, thermal_state);
+            });
+        }
+    }
+
+    public void registerVendorEventCallback(VendorEventCallback callback, Handler handler) {
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "registerVendorEventCallback: callback=" + callback + ", handler=" + handler);
+
+        Looper looper = (handler == null) ? mContext.getMainLooper() : handler.getLooper();
+        try {
+            mService.registerVendorEventCallback(new VendorEventCallbackProxy(looper, callback),
+                    callback.hashCode());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public void unregisterVendorEventCallback(VendorEventCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "unregisterVendorEventCallback: callback=" + callback);
+
+        try {
+            mService.unregisterVendorEventCallback(callback.hashCode());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public ThermalData getThermalInfo(String ifname) {
+        if (ifname == null) throw new IllegalArgumentException("ifname cannot be null");
+        Log.v(TAG, "getThermalInfo: ifname=" + ifname);
+        try {
+            return mService.getThermalInfo(ifname);
+        } catch (RemoteException e) {
+            Log.e(TAG, "getThermalInfo: " + e);
+            return null;
+        }
+    }
+
+    /**
+     * Set TX power limitation in dBm.
+     *
+     * @param ifname Name of the interface.
+     * @param dbm TX power in dBm.
+     * @return Results of setTxPower.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setTxPower(String ifname, int dbm) {
+        try {
+            return mService.setTxPower(ifname, dbm);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
     /**
      * Base class for Csi callback. Should be extended by applications and set when calling
      * {@link QtiWifiManager#registerCsiCallback(CsiCallback, Handler)}.
@@ -128,6 +208,16 @@ public class QtiWifiManager {
      */
     public interface CsiCallback {
         public abstract void onCsiUpdate(byte[] info);
+    }
+
+    /**
+     * Base class for vendor event callback. Should be extended by applications and
+     * set when calling
+     * {@link QtiWifiManager#registerVendorEventCallback(VendorCallback, Handler)}.
+     *
+     */
+    public interface VendorEventCallback {
+        public abstract void onThermalChanged(String ifname, int thermal_state);
     }
 
     /**
