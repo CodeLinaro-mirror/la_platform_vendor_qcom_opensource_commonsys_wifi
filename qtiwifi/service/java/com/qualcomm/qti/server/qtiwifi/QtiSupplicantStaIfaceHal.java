@@ -58,6 +58,8 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
+
 public class QtiSupplicantStaIfaceHal {
     private static final String TAG = "QtiSupplicantStaIfaceHal";
 
@@ -95,17 +97,17 @@ public class QtiSupplicantStaIfaceHal {
     }
 
     /**
-     * Wrapper function to create the ISupplicantStaIfaceHal object.
+     * Wrapper function to create the IQtiSupplicantStaIfaceHal object.
      * Created to be mockable in unit tests.
      */
     private IQtiSupplicantStaIfaceHal createVendorStaIfaceHalMockable() {
         synchronized (mLock) {
-            if (QtiSupplicantStaIfaceHalAidlImpl.serviceDeclared()) {
-                Log.i(TAG, "Initializing QtiSupplicantStaIfaceHal using AIDL implementation.");
-                return new QtiSupplicantStaIfaceHalAidlImpl();
-            } else if (QtiSupplicantStaIfaceHalHidlImpl.serviceDeclared()) {
+            if (QtiSupplicantStaIfaceHalHidlImpl.serviceDeclared()) {
                 Log.i(TAG, "Initializing QtiSupplicantStaIfaceHal using HIDL implementation.");
                 return new QtiSupplicantStaIfaceHalHidlImpl();
+            } else if (QtiSupplicantStaIfaceHalAidlImpl.serviceDeclared()) {
+                Log.i(TAG, "Initializing QtiSupplicantStaIfaceHal using AIDL implementation.");
+                return new QtiSupplicantStaIfaceHalAidlImpl();
             }
             Log.e(TAG, "No HIDL or AIDL service available for SupplicantStaIfaceHal.");
             return null;
@@ -144,4 +146,27 @@ public class QtiSupplicantStaIfaceHal {
         }
     }
 
+    /**
+     * List available STA interfaces
+     *
+     * @return active STA instances
+     */
+    public String[] listVendorInterfaces() {
+        synchronized (mLock) {
+            if (mQtiStaIfaceHal == null) {
+                Log.e(TAG, "call listVendorInterfaces but mQtiStaIfaceHal is null??");
+                return null;
+            }
+            return mQtiStaIfaceHal.listVendorInterfaces();
+        }
+    }
+
+    /**
+     * Register Hal listener for vendor events
+     */
+    public void registerWifiHalListener(WifiHalListener listener) {
+        synchronized (mLock) {
+            mQtiStaIfaceHal.registerWifiHalListener(listener);
+        }
+    }
 }
