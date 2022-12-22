@@ -6,6 +6,7 @@
 package com.qualcomm.qti.server.qtiwifi;
 
 import android.annotation.NonNull;
+import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
 
 /** Abstraction of Qti Supplicant STA Iface HAL interface */
 interface IQtiSupplicantStaIfaceHal {
@@ -32,4 +33,16 @@ interface IQtiSupplicantStaIfaceHal {
      * @return status/reply based on command type.
      */
     String doDriverCmd(String command);
+
+    /**
+     * List available STA interfaces
+     *
+     * @return active STA instances
+     */
+    String[] listVendorInterfaces();
+
+    /**
+     * Register Hal listener for vendor events
+     */
+    void registerWifiHalListener(WifiHalListener listener);
 }

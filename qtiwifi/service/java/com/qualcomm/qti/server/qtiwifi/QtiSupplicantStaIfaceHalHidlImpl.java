@@ -41,6 +41,7 @@ import com.qualcomm.qti.server.qtiwifi.util.GeneralUtil.Mutable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
 
 /**
  * Hal calls for bring up/shut down of the supplicant daemon and for
@@ -524,5 +525,13 @@ public class QtiSupplicantStaIfaceHalHidlImpl implements IQtiSupplicantStaIfaceH
          }
     }
 
+    public String[] listVendorInterfaces() {
+        return null;
+        /* not implemented */
+    }
+
+    public void registerWifiHalListener(WifiHalListener listener) {
+        /* not implemented */
+    }
 }
 
