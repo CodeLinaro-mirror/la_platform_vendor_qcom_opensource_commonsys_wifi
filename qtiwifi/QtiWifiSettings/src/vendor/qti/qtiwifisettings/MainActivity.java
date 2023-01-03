@@ -89,6 +89,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static final String COMMAND_UNREGISTER_VENDOR_EVENT_CALLBACK =
                                                  "unregister-vendor-event-callback";
     private static final String COMMAND_SET_TXPOWER = "set-txpower";
+    private static final String COMMAND_SET_ANI = "set-ani-level";
     private static final String COMMAND_RESULT_FAILED = "FAILED";
     private static final String COMMAND_RESULT_SUCCESS = "SUCCESS";
     private static final String COMMAND_RESULT_INVALID_COMMAND = "Invalid command!";
@@ -228,6 +229,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 reply = "OK";
             } else if (params[0].equals(COMMAND_SET_TXPOWER)) {
                 reply = setTxPower(params);
+            } else if (params[0].equals(COMMAND_SET_ANI)) {
+                reply = setAni(params);
             } else {
                 reply = COMMAND_RESULT_INVALID_COMMAND;
             }
@@ -267,6 +270,43 @@ public class MainActivity extends Activity implements View.OnClickListener {
             }
         } catch (NumberFormatException e) {
             return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        return COMMAND_RESULT_SUCCESS;
+    }
+
+    private String setAni(String[] params) {
+        if (params.length < 3) {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        String ifname = params[1];
+        String mode = params[2];
+        int modeVal = 0;
+        int ofdmlvl = -1;
+
+        if ("auto".equals(mode)) {
+            if (params.length > 3) {
+                Log.v(TAG, "In auto mode, ofmdlvl will be ignored.");
+            }
+        } else if ("fixed".equals(mode)) {
+            modeVal = 1;
+            if (params.length == 3) {
+                Log.v(TAG, "In fixed mode, ofmdlvl is required.");
+                return COMMAND_RESULT_INVALID_ARGS;
+            } else {
+                try {
+                    ofdmlvl = Integer.parseInt(params[3]);
+                } catch (Exception e) {
+                    Log.e(TAG, "ofdmlvl must be integer");
+                    return COMMAND_RESULT_INVALID_ARGS;
+                }
+            }
+        }
+
+        boolean res = mUniqueInstance.setAni(ifname, modeVal, ofdmlvl);
+        if (!res) {
+            return COMMAND_RESULT_FAILED;
         }
 
         return COMMAND_RESULT_SUCCESS;

@@ -202,6 +202,24 @@ public class QtiWifiManager {
     }
 
     /**
+     * Set ANI level.
+     *
+     * @param ifname Name of the interface.
+     * @param mode ani level mode(0: auto, 1: fixed, else: auto).
+     * @param ofdmlvl ANI level.
+     * @return result of setAni.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setAni(String ifname, int mode, int ofdmlvl) {
+        try {
+            return mService.setAni(ifname, mode, ofdmlvl);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Base class for Csi callback. Should be extended by applications and set when calling
      * {@link QtiWifiManager#registerCsiCallback(CsiCallback, Handler)}.
      *

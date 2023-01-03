@@ -47,4 +47,5 @@ interface IQtiWifiManager
     void unregisterVendorEventCallback(in int callbackIdentifier);
     ThermalData getThermalInfo(String ifname);
     boolean setTxPower(String ifname, int dbm);
+    boolean setAni(String ifname, int mode, int ofdmlvl);
 }

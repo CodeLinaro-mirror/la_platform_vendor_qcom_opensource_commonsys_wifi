@@ -157,6 +157,37 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         return setSuccess(reply);
     }
 
+    /**
+     * Set ANI level.
+     *
+     * @param ifname Name of the interface.
+     * @param mode ani level mode(0: auto, 1: fixed, else: auto).
+     * @param ofdmlvl ANI level.
+     * @return result of setAni.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setAni(String ifname, int mode, int ofdmlvl) {
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        //we're not checking ofdmlvl here and mode is treated as 0 in hal layer if not 1.
+        final String kSetAniCmd = "SET_ANI_LEVEL " + mode + " " + ofdmlvl;
+        String reply;
+
+        Log.v(TAG, "setAni: ifname=" + ifname + " mode=" + mode + " level=" + ofdmlvl);
+        if (isSupplicantIface(ifname)) {
+            reply = qtiSupplicantStaIfaceHal.doDriverCmd(kSetAniCmd);
+        } else if (isHostapdIface(ifname)) {
+            reply = qtiHostapdHal.doDriverCmd(ifname, kSetAniCmd);
+        } else {
+            Log.e(TAG, "Invalid ifame:" + ifname);
+            return false;
+        }
+        return setSuccess(reply);
+    }
+
     // Defined to be used by Hal
     public interface WifiHalListener {
         void onThermalChanged(String ifname, int level);
