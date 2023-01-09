@@ -51,4 +51,5 @@ interface IQtiWifiManager
     boolean setAni(String ifname, int mode, int ofdmlvl);
     boolean enableCarPlayIE(in CarPlayIEData carPlayIEData);
     boolean disableCarPlayIE();
+    boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
 }

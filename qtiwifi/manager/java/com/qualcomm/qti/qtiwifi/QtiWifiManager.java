@@ -148,6 +148,13 @@ public class QtiWifiManager {
                 mCallback.onThermalChanged(ifname, thermal_state);
             });
         }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onCongestionChanged(ifname, percentage);
+            });
+        }
     }
 
     public void registerVendorEventCallback(VendorEventCallback callback, Handler handler) {
@@ -239,6 +246,23 @@ public class QtiWifiManager {
     }
 
     /**
+     * Set congestion report parameter.
+     *
+     * @param ifname Name of the interface.
+     * @param enable Enable or disable congestion report.
+     * @param thre Only when congestion achieved the threshold need to report.
+     * @param inter Interval to report congestion.
+     * @return result of setCongestionReport.
+     */
+    public boolean setCongestionReport(String ifname, int enable, int thre, int inter) {
+        try {
+            return mService.setCongestionReport(ifname, enable, thre, inter);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Base class for Csi callback. Should be extended by applications and set when calling
      * {@link QtiWifiManager#registerCsiCallback(CsiCallback, Handler)}.
      *
@@ -255,6 +279,7 @@ public class QtiWifiManager {
      */
     public interface VendorEventCallback {
         public abstract void onThermalChanged(String ifname, int thermal_state);
+        public abstract void onCongestionChanged(String ifname, int percentage);
     }
 
     /**

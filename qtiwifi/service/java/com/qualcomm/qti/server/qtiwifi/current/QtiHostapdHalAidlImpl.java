@@ -67,7 +67,15 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
                     int level = Integer.parseInt(match.group(1));
                     mWifiHalListener.onThermalChanged(ifaceName, level);
                 } else {
-                    Log.e(TAG, "Could not parse event=" + eventStr);
+                    Log.e(TAG, "Could not parse themal event=" + eventStr);
+                }
+            } else if (eventStr.startsWith(QtiWifiServiceImpl.CONGESTION_EVENT_STR)) {
+                    Matcher match = QtiWifiServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
+                if (match.find()) {
+                    int level = Integer.parseInt(match.group(1));
+                    mWifiHalListener.onCongestionChanged(ifaceName, level);
+                } else {
+                    Log.e(TAG, "Could not parse congestion event=" + eventStr);
                 }
             }
         }

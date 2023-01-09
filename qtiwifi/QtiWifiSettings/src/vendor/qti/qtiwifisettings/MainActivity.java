@@ -101,6 +101,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                                  "unregister-vendor-event-callback";
     private static final String COMMAND_SET_TXPOWER = "set-txpower";
     private static final String COMMAND_SET_ANI = "set-ani-level";
+    private static final String COMMAND_SET_CONGESTION = "set-congestion-report";
     private static final String COMMAND_RESULT_FAILED = "FAILED";
     private static final String COMMAND_RESULT_SUCCESS = "SUCCESS";
     private static final String COMMAND_RESULT_INVALID_COMMAND = "Invalid command!";
@@ -131,6 +132,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
             //ignore ifname as we don't care
             Log.i(TAG, "onThermalChanged, level = " + level);
             eventViewCommand.setText("Received thermal change event: level=" + level);
+        }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) {
+            Log.i(TAG, "onCongestionChanged, ifname = " + ifname
+                    + " percentage = " + percentage);
+            eventViewCommand.setText("Received congestion change event: ifname = "
+                             + ifname + " percentage=" + percentage);
         }
     };
 
@@ -257,6 +266,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 reply = setAni(params);
             } else if (params[0].equals(COMMAND_SET_CARPLAY)){
                 reply = setCarPlayIE(params);
+            } else if (params[0].equals(COMMAND_SET_CONGESTION)) {
+                reply = setCongestion(params);
             } else {
                 reply = COMMAND_RESULT_INVALID_COMMAND;
             }
@@ -412,13 +423,58 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 try {
                     ofdmlvl = Integer.parseInt(params[3]);
                 } catch (Exception e) {
-                    Log.e(TAG, "ofdmlvl must be integer");
+                    Log.e(TAG, "ofdmlvl must be integer" + params[3]);
                     return COMMAND_RESULT_INVALID_ARGS;
                 }
             }
+        } else {
+            return COMMAND_RESULT_INVALID_ARGS;
         }
 
         boolean res = mUniqueInstance.setAni(ifname, modeVal, ofdmlvl);
+        if (!res) {
+            return COMMAND_RESULT_FAILED;
+        }
+
+        return COMMAND_RESULT_SUCCESS;
+    }
+
+    private String setCongestion(String[] params) {
+        if (params.length < 3) {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        String ifname = params[1];
+        String enable = params[2];
+        int enableInt = -1;
+        int threshold = -1;
+        int interval = -1;
+
+        if ("disable".equals(enable)) {
+            if (params.length > 3) {
+                Log.v(TAG, "When disable, threshold/interval will be ignored.");
+            }
+            enableInt = 0;
+        } else if ("enable".equals(enable)) {
+            enableInt = 1;
+            if (params.length < 5) {
+                Log.v(TAG, "When enable, threshold and interval are required.");
+                return COMMAND_RESULT_INVALID_ARGS;
+            } else {
+                try {
+                    threshold = Integer.parseInt(params[3]);
+                    interval = Integer.parseInt(params[4]);
+                } catch (Exception e) {
+                    Log.e(TAG, "threshold/interval must be integer"
+                          + params[3] + " " + params[4]);
+                    return COMMAND_RESULT_INVALID_ARGS;
+                }
+            }
+        } else {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        boolean res = mUniqueInstance.setCongestionReport(ifname, enableInt, threshold, interval);
         if (!res) {
             return COMMAND_RESULT_FAILED;
         }
