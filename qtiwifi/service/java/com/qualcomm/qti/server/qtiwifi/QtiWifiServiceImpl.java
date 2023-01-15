@@ -60,6 +60,7 @@ import com.qualcomm.qti.qtiwifi.ICsiCallback;
 import com.qualcomm.qti.qtiwifi.IQtiWifiManager;
 import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 import vendor.qti.hardware.wifi.supplicant.ISupplicantVendor;
 
 public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
@@ -119,6 +120,34 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         thermalData.setTemperature(info[0]);
         thermalData.setThermalLevel(toFrameworkThermalLevel(info[1]));
         return thermalData;
+    }
+
+    public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
+        String[] ifnames = listHostapdVendorInterfaces();
+        if (ifnames.length == 0) {
+            Log.e(TAG, "can't get ap interface.");
+            return false;
+        }
+
+        List<String> ifacesList = Arrays.asList(ifnames);
+        String iface = ifacesList.get(0);
+        Log.d(TAG, "Set carplay IE");
+        qtiHostapdHal.enableSoftapCarPlay(iface, carPlayIEData);
+        return true;
+    }
+
+    public boolean disableCarPlayIE() {
+        String[] ifnames = listHostapdVendorInterfaces();
+        if (ifnames.length == 0) {
+            Log.e(TAG, "can't get ap interface.");
+            return false;
+        }
+
+        List<String> ifacesList = Arrays.asList(ifnames);
+        String iface = ifacesList.get(0);
+        Log.d(TAG, "Disable carplay IE");
+        qtiHostapdHal.disableSoftapCarPlay(iface);
+        return true;
     }
 
     /**

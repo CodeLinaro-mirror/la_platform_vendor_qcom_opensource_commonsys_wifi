@@ -141,4 +141,29 @@ public class QtiHostapdHal {
             mQtiHostapdHal.registerWifiHalListener(listener);
         }
     }
+
+    public void enableSoftapCarPlay(String iface, CarPlayIEData carPlayIEData) {
+        String mac = doDriverCmd(iface, "Macaddr").replace("Macaddr = ", "");
+        Log.d(TAG, "hostapdCmd(DRIVER Macaddr)=" + mac);
+        // Take this mac and build the vendor element string
+        doCtrlIfaceCmd(iface, "SET vendor_elements " + carPlayIEData.getVendorIe());
+        doCtrlIfaceCmd(iface, "SET assocresp_elements " + carPlayIEData.getAssocRespElement());
+        doCtrlIfaceCmd(iface, "SET interworking 1");
+        doCtrlIfaceCmd(iface, "SET access_network_type " + carPlayIEData.getAccessNetworkType());
+        doCtrlIfaceCmd(iface, "SET esr " + carPlayIEData.getEsr());
+        doCtrlIfaceCmd(iface, "SET internet " + carPlayIEData.getInternet());
+        doCtrlIfaceCmd(iface, "SET venue_type " + carPlayIEData.getVenueType());
+        doCtrlIfaceCmd(iface, "SET venue_group " + carPlayIEData.getVenueGroup());
+        doCtrlIfaceCmd(iface, "SET hessid " + carPlayIEData.getHessid());
+        doCtrlIfaceCmd(iface, "UPDATE_BEACON");
+    }
+
+    public void disableSoftapCarPlay(String iface) {
+        String mac = doDriverCmd(iface, "Macaddr").replace("Macaddr= ", "");
+        Log.d(TAG, "hostapdCmd(DRIVER Macaddr)=" + mac);
+        doCtrlIfaceCmd(iface, "SET vendor_elements " + "");
+        doCtrlIfaceCmd(iface, "SET assocresp_elements " + "");
+        doCtrlIfaceCmd(iface, "SET interworking 0");
+        doCtrlIfaceCmd(iface, "UPDATE_BEACON");
+    }
 }

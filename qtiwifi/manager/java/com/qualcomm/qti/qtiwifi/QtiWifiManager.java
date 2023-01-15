@@ -46,6 +46,7 @@ import android.content.Intent;
 import java.util.List;
 
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 public class QtiWifiManager {
     private static final String TAG = "QtiWifiManager";
@@ -214,6 +215,24 @@ public class QtiWifiManager {
     public boolean setAni(String ifname, int mode, int ofdmlvl) {
         try {
             return mService.setAni(ifname, mode, ofdmlvl);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
+        try {
+            Log.d(TAG, "setCarPlayIE");
+            return mService.enableCarPlayIE(carPlayIEData);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public boolean disableCarPlayIE() {
+        try {
+            Log.d(TAG, "disableCarPlayIE");
+            return mService.disableCarPlayIE();
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
