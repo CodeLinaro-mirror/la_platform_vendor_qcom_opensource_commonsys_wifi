@@ -253,6 +253,34 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     }
 
     /**
+     * run ctrl iface command
+     *
+     * @param command ctrl iface Command
+     * @return status
+     */
+
+    public String doCtrlIfaceCmd(String iface, String command)
+    {
+        synchronized (mLock) {
+            final String methodStr = "doCtrlIfaceCmd";
+            final Mutable<String> reply = new Mutable<>();
+
+            reply.value = "";
+
+            try {
+                reply.value = mIHostapdVendor.doDriverCmd(iface, command);
+            } catch (RemoteException e) {
+                Log.e(TAG, "doCtrlIfaceCmd failed with RemoteException");
+                handleRemoteException(e, methodStr);
+            } catch (ServiceSpecificException e) {
+                Log.e(TAG, "doCtrlIfaceCmd failed with ServiceSpecificException");
+                handleServiceSpecificException(e, methodStr);
+            }
+            return reply.value;
+         }
+    }
+
+    /**
      * List active SAP instances
      *
      * @return available SAP instances

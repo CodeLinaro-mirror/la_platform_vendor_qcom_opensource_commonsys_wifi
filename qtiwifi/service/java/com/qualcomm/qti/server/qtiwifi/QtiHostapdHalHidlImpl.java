@@ -41,6 +41,17 @@ public class QtiHostapdHalHidlImpl implements IQtiHostapdHal {
     }
 
     /**
+     * run Ctrl Iface command
+     *
+     * @param command Ctrl Iface Command
+     * @return status
+     */
+    public String doCtrlIfaceCmd(String iface, String command)
+    {
+        return null;
+    }
+
+    /**
      * List active SAP instances
      *
      * @return available SAP instances

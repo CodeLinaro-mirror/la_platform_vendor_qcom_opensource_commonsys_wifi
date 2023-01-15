@@ -103,6 +103,22 @@ public class QtiHostapdHal {
     }
 
     /**
+     * run ctrl iface command
+     *
+     * @param ifaceName Interface Name
+     * @param command ctrl iface Command
+     */
+    public String doCtrlIfaceCmd(String iface, String command)
+    {
+        synchronized (mLock) {
+            final String methodStr = "doCtrlIfaceCmd";
+            if (mQtiHostapdHal == null) {
+                return "QtiStaIfaceHal is null";
+            }
+            return mQtiHostapdHal.doCtrlIfaceCmd(iface, command);
+        }
+    }
+    /**
      * List available SAP interfaces
      *
      * @return active SAP instances
