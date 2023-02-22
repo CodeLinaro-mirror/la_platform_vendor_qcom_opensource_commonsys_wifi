@@ -29,6 +29,7 @@ import android.os.IBinder;
 import android.util.Log;
 
 import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 public class QtiHostapdHal {
     private static final String TAG = "QtiHostapdHal";
