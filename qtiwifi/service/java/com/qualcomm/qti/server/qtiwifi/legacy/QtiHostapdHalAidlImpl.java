@@ -33,6 +33,11 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
         return null;
     }
 
+    public String doCtrlIfaceCmd(String iface, String command)
+    {
+        return null;
+    }
+
     public String[] listVendorInterfaces() {
         return null;
     }
