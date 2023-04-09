@@ -35,6 +35,7 @@ package com.qualcomm.qti.qtiwifi;
 import com.qualcomm.qti.qtiwifi.ICsiCallback;
 import com.qualcomm.qti.qtiwifi.ThermalData;
 import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 interface IQtiWifiManager
 {
@@ -48,4 +49,7 @@ interface IQtiWifiManager
     ThermalData getThermalInfo(String ifname);
     boolean setTxPower(String ifname, int dbm);
     boolean setAni(String ifname, int mode, int ofdmlvl);
+    boolean enableCarPlayIE(in CarPlayIEData carPlayIEData);
+    boolean disableCarPlayIE();
+    boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
 }

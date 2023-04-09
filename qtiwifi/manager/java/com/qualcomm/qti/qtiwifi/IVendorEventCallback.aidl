@@ -13,4 +13,5 @@ package com.qualcomm.qti.qtiwifi;
 oneway interface IVendorEventCallback
 {
     void onThermalChanged(String ifname, int level);
+    void onCongestionChanged(String ifname, int percentage);
 }

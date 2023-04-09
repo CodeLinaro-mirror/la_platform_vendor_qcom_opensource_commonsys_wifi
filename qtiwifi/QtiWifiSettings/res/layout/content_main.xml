@@ -54,6 +54,70 @@
             android:hint="input command here"
             android:layout_margin="20dp" />
 
+        <EditText
+            android:id="@+id/editTextCarPlayVendorIE"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input vendor IE here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayAssocRespElement"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input assoc resp element here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayAccessNetworkType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input access network type here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayEsr"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input esr here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayInternet"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input internet here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayVenueType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input venue type here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editTextCarPlayVenueGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input venue group here"
+            android:visibility="gone" />
+
+        <EditText
+            android:id="@+id/editCarPlayHessid"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Please input hessid as the format 11:22:33:44:55:66"
+            android:visibility="gone" />
+
         <Button
             android:id="@+id/buttonCommand"
             android:layout_width="match_parent"
@@ -61,6 +125,15 @@
             android:layout_weight="1"
             android:layout_margin="20dp"
             android:text="Run Command" />
+
+        <Button
+            android:id="@+id/buttonCarPlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="20dp"
+            android:text="CarPlay Parameters Set"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/textViewCommand"

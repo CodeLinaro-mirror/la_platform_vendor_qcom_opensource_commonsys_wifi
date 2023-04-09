@@ -65,6 +65,7 @@ import java.util.List;
 import android.net.wifi.WifiManager;
 import com.qualcomm.qti.qtiwifi.QtiWifiManager;
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
@@ -74,13 +75,23 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private Button buttonStart;
     private Button buttonStop;
     private Button buttonCommand;
+    private Button buttonCarPlay;
     private EditText editTextCommand;
+    private EditText editTextCarPlayVendorIE;
+    private EditText editTextCarPlayAssocRespElement;
+    private EditText editTextCarPlayAccessNetworkType;
+    private EditText editTextCarPlayEsr;
+    private EditText editTextCarPlayInternet;
+    private EditText editTextCarPlayVenueType;
+    private EditText editTextCarPlayVenueGroup;
+    private EditText editCarPlayHessid;
     private TextView textViewCommand;
     private TextView eventViewCommand;
     private WifiManager mWifiManager;
     private static QtiWifiManager mUniqueInstance = null;
     private FileOutputStream fileout;
     private OutputStreamWriter outputWriter;
+    private static CarPlayIEData mCarPlayIEData = new CarPlayIEData();
 
     private static final String COMMAND_GET_AVAILABLE_INTERFACES = "list-interfaces";
     private static final String COMMAND_GET_THERMAL_INFO = "get-thermal-info";
@@ -90,10 +101,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
                                                  "unregister-vendor-event-callback";
     private static final String COMMAND_SET_TXPOWER = "set-txpower";
     private static final String COMMAND_SET_ANI = "set-ani-level";
+    private static final String COMMAND_SET_CONGESTION = "set-congestion-report";
     private static final String COMMAND_RESULT_FAILED = "FAILED";
     private static final String COMMAND_RESULT_SUCCESS = "SUCCESS";
     private static final String COMMAND_RESULT_INVALID_COMMAND = "Invalid command!";
     private static final String COMMAND_RESULT_INVALID_ARGS = "Invalid args!";
+    private static final String COMMAND_SET_CARPLAY = "carplay";
 
     private QtiWifiManager.CsiCallback mCsiCallback = new QtiWifiManager.CsiCallback() {
         @Override
@@ -119,6 +132,14 @@ public class MainActivity extends Activity implements View.OnClickListener {
             //ignore ifname as we don't care
             Log.i(TAG, "onThermalChanged, level = " + level);
             eventViewCommand.setText("Received thermal change event: level=" + level);
+        }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) {
+            Log.i(TAG, "onCongestionChanged, ifname = " + ifname
+                    + " percentage = " + percentage);
+            eventViewCommand.setText("Received congestion change event: ifname = "
+                             + ifname + " percentage=" + percentage);
         }
     };
 
@@ -153,6 +174,18 @@ public class MainActivity extends Activity implements View.OnClickListener {
         buttonCommand.setOnClickListener(this);
         textViewCommand.setMovementMethod(ScrollingMovementMethod.getInstance());
         eventViewCommand.setMovementMethod(ScrollingMovementMethod.getInstance());
+
+        // carplay relative
+        editTextCarPlayVendorIE = (EditText) findViewById(R.id.editTextCarPlayVendorIE);
+        editTextCarPlayAssocRespElement = (EditText) findViewById(R.id.editTextCarPlayAssocRespElement);
+        editTextCarPlayAccessNetworkType = (EditText) findViewById(R.id.editTextCarPlayAccessNetworkType);
+        editTextCarPlayEsr = (EditText) findViewById(R.id.editTextCarPlayEsr);
+        editTextCarPlayInternet = (EditText) findViewById(R.id.editTextCarPlayInternet);
+        editTextCarPlayVenueType = (EditText) findViewById(R.id.editTextCarPlayVenueType);
+        editTextCarPlayVenueGroup = (EditText) findViewById(R.id.editTextCarPlayVenueGroup);
+        editCarPlayHessid = (EditText) findViewById(R.id.editCarPlayHessid);
+        buttonCarPlay = (Button) findViewById(R.id.buttonCarPlay);
+        buttonCarPlay.setOnClickListener(this);
 
         ViewGroup layout = (ViewGroup) buttonCommand.getParent();
         if (!isAutoPlatform()) {
@@ -231,10 +264,39 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 reply = setTxPower(params);
             } else if (params[0].equals(COMMAND_SET_ANI)) {
                 reply = setAni(params);
+            } else if (params[0].equals(COMMAND_SET_CARPLAY)){
+                reply = setCarPlayIE(params);
+            } else if (params[0].equals(COMMAND_SET_CONGESTION)) {
+                reply = setCongestion(params);
             } else {
                 reply = COMMAND_RESULT_INVALID_COMMAND;
             }
             reply = "result of " + command + ":\n" + reply;
+            textViewCommand.setText(reply);
+        } else if (view == buttonCarPlay) {
+            String reply = "";
+            String vendorIE = editTextCarPlayVendorIE.getText().toString();
+            String assocRespElement = editTextCarPlayAssocRespElement.getText().toString();
+            String accessNetworkType = editTextCarPlayAccessNetworkType.getText().toString();
+            String esr = editTextCarPlayEsr.getText().toString();
+            String internet = editTextCarPlayInternet.getText().toString();
+            String venueType = editTextCarPlayVenueType.getText().toString();
+            String venueGroup = editTextCarPlayVenueGroup.getText().toString();
+            String hessid = editCarPlayHessid.getText().toString();
+            Log.d(TAG, "VendorIE: " + vendorIE + ", accessNetworkType: " + accessNetworkType +
+                       ", assocRespElement: " + assocRespElement + ", esr: " + esr + ", internet: "
+                       + internet + ", venueType: " + venueType + ", venueGroup: " + venueGroup +
+                       ", hessid: " + hessid);
+            setCarPlayToolBarVisible(false);
+            mCarPlayIEData.setVendorIE(vendorIE);
+            mCarPlayIEData.setAssocRespElement(assocRespElement);
+            mCarPlayIEData.setAccessNetworkType(accessNetworkType);
+            mCarPlayIEData.setEsr(esr);
+            mCarPlayIEData.setInternet(internet);
+            mCarPlayIEData.setVenueType(venueType);
+            mCarPlayIEData.setVenueGroup(venueGroup);
+            mCarPlayIEData.setHessid(hessid);
+            reply = "Set parameters completely.";
             textViewCommand.setText(reply);
         }
     }
@@ -254,6 +316,69 @@ public class MainActivity extends Activity implements View.OnClickListener {
         String reply = "temperature=" + data.getTemperature()
                      + " level="+ data.getThermalLevel();
         return reply;
+    }
+
+    private String setCarPlayIE(String[] params) {
+        boolean setResult = false;
+        if (params.length < 2) {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        if (params[1].equals("enable")) {
+            Log.d(TAG, "setCarPlayIE: ");
+            setResult = mUniqueInstance.enableCarPlayIE(mCarPlayIEData);
+            if (setResult == true) {
+                return COMMAND_RESULT_SUCCESS;
+            } else {
+                Log.e(TAG, "AP is not enable, can't set carplay ie, please enable AP at first.");
+                String reply = "AP is not enable, can't set carplay ie, please enable AP at first";
+                return reply;
+            }
+        } else if (params[1].equals("set")) {
+            Log.d(TAG, "Set CarPlay relative tool bar visible");
+            setCarPlayToolBarVisible(true);
+            String reply = "Set CarPlay relative parameters.";
+            return reply;
+        } else if (params[1].equals("disable")) {
+            Log.d(TAG, "Disable CarPlay");
+            setResult = mUniqueInstance.disableCarPlayIE();
+            if (setResult == true) {
+                return COMMAND_RESULT_SUCCESS;
+            } else {
+                 String reply = "Fail to disable CarPlayIE";
+                 return reply;
+            }
+        } else {
+            Log.e(TAG, "parameter " + params[1] + " not support now!");
+            String reply = "parameter " + params[1] + " not support now!";
+            return reply;
+        }
+    }
+
+    private void setCarPlayToolBarVisible(boolean visible) {
+        if (visible == true) {
+            editTextCarPlayVendorIE.setVisibility(View.VISIBLE);
+            editTextCarPlayAssocRespElement.setVisibility(View.VISIBLE);
+            editTextCarPlayAccessNetworkType.setVisibility(View.VISIBLE);
+            editTextCarPlayEsr.setVisibility(View.VISIBLE);
+            editTextCarPlayInternet.setVisibility(View.VISIBLE);
+            editTextCarPlayVenueType.setVisibility(View.VISIBLE);
+            editTextCarPlayVenueGroup.setVisibility(View.VISIBLE);
+            editCarPlayHessid.setVisibility(View.VISIBLE);
+            buttonCommand.setVisibility(View.GONE);
+            buttonCarPlay.setVisibility(View.VISIBLE);
+        } else {
+            editTextCarPlayVendorIE.setVisibility(View.GONE);
+            editTextCarPlayAssocRespElement.setVisibility(View.GONE);
+            editTextCarPlayAccessNetworkType.setVisibility(View.GONE);
+            editTextCarPlayEsr.setVisibility(View.GONE);
+            editTextCarPlayInternet.setVisibility(View.GONE);
+            editTextCarPlayVenueType.setVisibility(View.GONE);
+            editTextCarPlayVenueGroup.setVisibility(View.GONE);
+            editCarPlayHessid.setVisibility(View.GONE);
+            buttonCommand.setVisibility(View.VISIBLE);
+            buttonCarPlay.setVisibility(View.GONE);
+        }
     }
 
     private String setTxPower(String[] params) {
@@ -298,13 +423,58 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 try {
                     ofdmlvl = Integer.parseInt(params[3]);
                 } catch (Exception e) {
-                    Log.e(TAG, "ofdmlvl must be integer");
+                    Log.e(TAG, "ofdmlvl must be integer" + params[3]);
                     return COMMAND_RESULT_INVALID_ARGS;
                 }
             }
+        } else {
+            return COMMAND_RESULT_INVALID_ARGS;
         }
 
         boolean res = mUniqueInstance.setAni(ifname, modeVal, ofdmlvl);
+        if (!res) {
+            return COMMAND_RESULT_FAILED;
+        }
+
+        return COMMAND_RESULT_SUCCESS;
+    }
+
+    private String setCongestion(String[] params) {
+        if (params.length < 3) {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        String ifname = params[1];
+        String enable = params[2];
+        int enableInt = -1;
+        int threshold = -1;
+        int interval = -1;
+
+        if ("disable".equals(enable)) {
+            if (params.length > 3) {
+                Log.v(TAG, "When disable, threshold/interval will be ignored.");
+            }
+            enableInt = 0;
+        } else if ("enable".equals(enable)) {
+            enableInt = 1;
+            if (params.length < 5) {
+                Log.v(TAG, "When enable, threshold and interval are required.");
+                return COMMAND_RESULT_INVALID_ARGS;
+            } else {
+                try {
+                    threshold = Integer.parseInt(params[3]);
+                    interval = Integer.parseInt(params[4]);
+                } catch (Exception e) {
+                    Log.e(TAG, "threshold/interval must be integer"
+                          + params[3] + " " + params[4]);
+                    return COMMAND_RESULT_INVALID_ARGS;
+                }
+            }
+        } else {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+
+        boolean res = mUniqueInstance.setCongestionReport(ifname, enableInt, threshold, interval);
         if (!res) {
             return COMMAND_RESULT_FAILED;
         }
