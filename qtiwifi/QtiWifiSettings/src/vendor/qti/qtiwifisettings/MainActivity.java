@@ -108,30 +108,15 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static final String COMMAND_RESULT_INVALID_ARGS = "Invalid args!";
     private static final String COMMAND_SET_CARPLAY = "carplay";
 
-    private QtiWifiManager.CsiCallback mCsiCallback = new QtiWifiManager.CsiCallback() {
-        @Override
-        public void onCsiUpdate(byte[] info) {
-            StringBuilder strBuilder = new StringBuilder();
-            for(byte val : info) {
-                strBuilder.append(String.format("%02x", val&0xff));
-            }
-            Log.d(TAG, "onCsiUpdate csi info = " + info);
-            try {
-                outputWriter.write(strBuilder.toString());
-                Log.i(TAG, "Successfully write into the file");
-            } catch (IOException e) {
-                Log.e(TAG, "Error while writing into the file");
-            }
-        }
-    };
-
     private QtiWifiManager.VendorEventCallback mVendorEventCallback =
         new QtiWifiManager.VendorEventCallback() {
         @Override
         public void onThermalChanged(String ifname, int level) {
             //ignore ifname as we don't care
             Log.i(TAG, "onThermalChanged, level = " + level);
-            eventViewCommand.setText("Received thermal change event: level=" + level);
+            eventViewCommand.setText("Received thermal change event: ifname = "
+                             + ifname + " level=" + level
+                             + "\n" + eventViewCommand.getText());
         }
 
         @Override
@@ -139,7 +124,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             Log.i(TAG, "onCongestionChanged, ifname = " + ifname
                     + " percentage = " + percentage);
             eventViewCommand.setText("Received congestion change event: ifname = "
-                             + ifname + " percentage=" + percentage);
+                             + ifname + " percentage=" + percentage
+                             + "\n" + eventViewCommand.getText());
         }
     };
 
@@ -159,13 +145,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         Log.i(TAG, "initialize called");
 
         setContentView(R.layout.content_main);
-        //getting buttons from xml
-        buttonStart = (Button) findViewById(R.id.buttonStart);
-        buttonStop = (Button) findViewById(R.id.buttonStop);
-
-        //attaching onclicklistener to buttons
-        buttonStart.setOnClickListener(this);
-        buttonStop.setOnClickListener(this);
 
         buttonCommand = (Button) findViewById(R.id.buttonCommand);
         editTextCommand = (EditText) findViewById(R.id.editTextCommand);
@@ -187,17 +166,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
         buttonCarPlay = (Button) findViewById(R.id.buttonCarPlay);
         buttonCarPlay.setOnClickListener(this);
 
-        ViewGroup layout = (ViewGroup) buttonCommand.getParent();
-        if (!isAutoPlatform()) {
-            layout.removeView(buttonCommand);
-            layout.removeView(editTextCommand);
-            layout.removeView(textViewCommand);
-            layout.removeView(eventViewCommand);
-        } else {
-            layout.removeView(buttonStart);
-            layout.removeView(buttonStop);
-        }
-
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
     }
 
@@ -212,35 +180,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
             Log.e(TAG, "Failed to get QtiWifiManager instance");
             return;
         }
-        if (view == buttonStart) {
-            //starting service
-            if (!mWifiManager.isWifiEnabled()) {
-                showMessage("Turn on Wifi before capturing CSI data");
-                Log.e(TAG, "Turn on Wifi before capturing CSI data");
-            } else if (mWifiManager.isWifiEnabled()) {
-                showMessage("CSI start until user stops");
-                mUniqueInstance.startCsi(mCsiCallback, null);
-                try {
-                    fileout=openFileOutput("mytextfile.txt", MODE_PRIVATE);
-                    outputWriter=new OutputStreamWriter(fileout);
-                    showMessage("File open successfully!");
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to open file");
-                }
-            } else {
-                showMessage("uniqueInstance is null");
-                Log.e(TAG, "Failed to get QtiWifiManager instance");
-            }
-        } else if (view == buttonStop) {
-            //stopping service
-            mUniqueInstance.stopCsi(mCsiCallback);
-            try {
-                outputWriter.close();
-                Log.i(TAG, "Succseefully close the file");
-            } catch (IOException e) {
-                Log.e(TAG, "Failed to close the file");
-            }
-        } else if (view == buttonCommand) {
+
+        if (view == buttonCommand) {
             String command = editTextCommand.getText().toString();
             String reply = "";
             String[] params = command.split("\\s+");
@@ -299,10 +240,6 @@ public class MainActivity extends Activity implements View.OnClickListener {
             reply = "Set parameters completely.";
             textViewCommand.setText(reply);
         }
-    }
-
-    private boolean isAutoPlatform() {
-        return getPackageManager().hasSystemFeature(PackageManager.FEATURE_AUTOMOTIVE);
     }
 
     private String getThermalInfo(String[] params) {
