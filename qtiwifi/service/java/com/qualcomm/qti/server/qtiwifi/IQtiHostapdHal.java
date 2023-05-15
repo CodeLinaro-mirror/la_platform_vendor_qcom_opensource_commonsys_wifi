@@ -27,6 +27,15 @@ interface IQtiHostapdHal {
     String doDriverCmd(String iface, String command);
 
     /**
+     * Run ctrl iface command
+     *
+     * @param iface specified SAP instance.
+     * @param command ctrl iface command.
+     * @return command reply
+     */
+    String doCtrlIfaceCmd(String iface, String command);
+
+    /**
      * List available SAP interfaces
      *
      * @return active SAP instances

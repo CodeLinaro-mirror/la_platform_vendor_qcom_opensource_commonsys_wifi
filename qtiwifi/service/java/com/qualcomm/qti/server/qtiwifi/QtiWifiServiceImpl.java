@@ -60,6 +60,7 @@ import com.qualcomm.qti.qtiwifi.ICsiCallback;
 import com.qualcomm.qti.qtiwifi.IQtiWifiManager;
 import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 import vendor.qti.hardware.wifi.supplicant.ISupplicantVendor;
 
 public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
@@ -87,8 +88,11 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     /* Hal vendor event string */
     public static final String THERMAL_EVENT_STR = "CTRL-EVENT-THERMAL-CHANGED";
+    public static final String CONGESTION_EVENT_STR = "CTRL-EVENT-CONGESTION-REPORT";
     public static final Pattern THERMAL_PATTERN =
         Pattern.compile(THERMAL_EVENT_STR + " level=([0-9]+)");
+    public static final Pattern CONGESTION_PATTERN =
+        Pattern.compile(CONGESTION_EVENT_STR + " percentage=([0-9]+)");
 
     /* Vendor callbacks */
     private final RemoteCallbackList<IVendorEventCallback> mVendorEventCallbacks;
@@ -119,6 +123,34 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         thermalData.setTemperature(info[0]);
         thermalData.setThermalLevel(toFrameworkThermalLevel(info[1]));
         return thermalData;
+    }
+
+    public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
+        String[] ifnames = listHostapdVendorInterfaces();
+        if (ifnames.length == 0) {
+            Log.e(TAG, "can't get ap interface.");
+            return false;
+        }
+
+        List<String> ifacesList = Arrays.asList(ifnames);
+        String iface = ifacesList.get(0);
+        Log.d(TAG, "Set carplay IE");
+        qtiHostapdHal.enableSoftapCarPlay(iface, carPlayIEData);
+        return true;
+    }
+
+    public boolean disableCarPlayIE() {
+        String[] ifnames = listHostapdVendorInterfaces();
+        if (ifnames.length == 0) {
+            Log.e(TAG, "can't get ap interface.");
+            return false;
+        }
+
+        List<String> ifacesList = Arrays.asList(ifnames);
+        String iface = ifacesList.get(0);
+        Log.d(TAG, "Disable carplay IE");
+        qtiHostapdHal.disableSoftapCarPlay(iface);
+        return true;
     }
 
     /**
@@ -157,9 +189,75 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         return setSuccess(reply);
     }
 
+    /**
+     * Set ANI level.
+     *
+     * @param ifname Name of the interface.
+     * @param mode ani level mode(0: auto, 1: fixed, else: auto).
+     * @param ofdmlvl ANI level.
+     * @return result of setAni.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setAni(String ifname, int mode, int ofdmlvl) {
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        //we're not checking ofdmlvl here and mode is treated as 0 in hal layer if not 1.
+        final String kSetAniCmd = "SET_ANI_LEVEL " + mode + " " + ofdmlvl;
+        String reply;
+
+        Log.v(TAG, "setAni: ifname=" + ifname + " mode=" + mode + " level=" + ofdmlvl);
+        if (isSupplicantIface(ifname)) {
+            reply = qtiSupplicantStaIfaceHal.doDriverCmd(kSetAniCmd);
+        } else if (isHostapdIface(ifname)) {
+            reply = qtiHostapdHal.doDriverCmd(ifname, kSetAniCmd);
+        } else {
+            Log.e(TAG, "Invalid ifame:" + ifname);
+            return false;
+        }
+        return setSuccess(reply);
+    }
+
+    /**
+     * Set Congestion report parameters.
+     *
+     * @param ifname Name of the interface.
+     * @param enable ani level mode(0: auto, 1: fixed, else: auto).
+     * @param thre Only when congestion achieved the threshold need to report.
+     * @param inter Interval to report congestion.
+     * @return result of setCongestionReport.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setCongestionReport(String ifname, int enable, int thre, int inter) {
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        final String kSetCongestionReportCmd = "SET_CONGESTION_REPORT "
+                     + enable + " " + thre + " " + inter;
+        String reply;
+        //threshold and interval limitation are checked in hostapd
+        Log.v(TAG, "setCongestionReport: ifname=" + ifname + " enable=" + enable
+                + " threshold=" + thre + " interval=" + inter);
+        if (isSupplicantIface(ifname)) {
+            Log.e(TAG, "only available for SAP mode.");
+            return false;
+        } else if (isHostapdIface(ifname)) {
+            reply = qtiHostapdHal.doDriverCmd(ifname, kSetCongestionReportCmd);
+        } else {
+            Log.e(TAG, "Invalid ifame:" + ifname);
+            return false;
+        }
+        return setSuccess(reply);
+    }
+
     // Defined to be used by Hal
     public interface WifiHalListener {
         void onThermalChanged(String ifname, int level);
+        void onCongestionChanged(String ifname, int percent);
     }
 
     private int toFrameworkThermalLevel(int original_val) {
@@ -195,6 +293,23 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                         mVendorEventCallbacks.getBroadcastItem(i).onThermalChanged(ifname, level);
                     } catch (Exception e) {
                         Log.e(TAG, "onThermalChanged error.");
+                    }
+                }
+                mVendorEventCallbacks.finishBroadcast();
+            }
+        }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) {
+            synchronized (mVendorEventCallbacks) {
+                // Trigger callbacks
+                int itemCount = mVendorEventCallbacks.beginBroadcast();
+                for (int i = 0; i < itemCount; ++i) {
+                    try {
+                        mVendorEventCallbacks.getBroadcastItem(i).onCongestionChanged(
+                            ifname, percentage);
+                    } catch (Exception e) {
+                        Log.e(TAG, "onCongestionChanged error.");
                     }
                 }
                 mVendorEventCallbacks.finishBroadcast();
@@ -342,11 +457,15 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public void unregisterVendorEventCallback(int callbackIdentifier) {
         if (DBG) {
-            Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
+            Log.i(TAG, "unregisterVendorEventCallback uid=%" + Binder.getCallingUid());
         }
         enforceAccessPermission();
         synchronized(mVendorEventCallbacks) {
             IVendorEventCallback callback = mVendorEventCallbacksMap.get(callbackIdentifier);
+            if (callback == null) {
+                Log.d(TAG, "no such registered callback found, id=" + callbackIdentifier);
+                return;
+            }
             mVendorEventCallbacks.unregister(callback);
             mVendorEventCallbacksMap.remove(callbackIdentifier);
         }

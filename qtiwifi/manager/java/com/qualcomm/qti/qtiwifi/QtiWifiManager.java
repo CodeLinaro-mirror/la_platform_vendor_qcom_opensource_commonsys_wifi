@@ -46,6 +46,7 @@ import android.content.Intent;
 import java.util.List;
 
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 public class QtiWifiManager {
     private static final String TAG = "QtiWifiManager";
@@ -147,6 +148,13 @@ public class QtiWifiManager {
                 mCallback.onThermalChanged(ifname, thermal_state);
             });
         }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onCongestionChanged(ifname, percentage);
+            });
+        }
     }
 
     public void registerVendorEventCallback(VendorEventCallback callback, Handler handler) {
@@ -202,6 +210,59 @@ public class QtiWifiManager {
     }
 
     /**
+     * Set ANI level.
+     *
+     * @param ifname Name of the interface.
+     * @param mode ani level mode(0: auto, 1: fixed, else: auto).
+     * @param ofdmlvl ANI level.
+     * @return result of setAni.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setAni(String ifname, int mode, int ofdmlvl) {
+        try {
+            return mService.setAni(ifname, mode, ofdmlvl);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
+        try {
+            Log.d(TAG, "setCarPlayIE");
+            return mService.enableCarPlayIE(carPlayIEData);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public boolean disableCarPlayIE() {
+        try {
+            Log.d(TAG, "disableCarPlayIE");
+            return mService.disableCarPlayIE();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Set congestion report parameter.
+     *
+     * @param ifname Name of the interface.
+     * @param enable Enable or disable congestion report.
+     * @param thre Only when congestion achieved the threshold need to report.
+     * @param inter Interval to report congestion.
+     * @return result of setCongestionReport.
+     */
+    public boolean setCongestionReport(String ifname, int enable, int thre, int inter) {
+        try {
+            return mService.setCongestionReport(ifname, enable, thre, inter);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
      * Base class for Csi callback. Should be extended by applications and set when calling
      * {@link QtiWifiManager#registerCsiCallback(CsiCallback, Handler)}.
      *
@@ -218,6 +279,7 @@ public class QtiWifiManager {
      */
     public interface VendorEventCallback {
         public abstract void onThermalChanged(String ifname, int thermal_state);
+        public abstract void onCongestionChanged(String ifname, int percentage);
     }
 
     /**
