@@ -62,10 +62,11 @@ import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
 import com.qualcomm.qti.qtiwifi.ThermalData;
 import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 import vendor.qti.hardware.wifi.supplicant.ISupplicantVendor;
+import vendor.qti.hardware.wifi.qtiwifi.IfaceInfo;
+import vendor.qti.hardware.wifi.qtiwifi.IfaceType;
 
 public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     private static final String TAG = "QtiWifiServiceImpl";
-    private static final boolean DBG = true;
     private boolean mServiceStarted = false;
     private WifiManager mWifiManager;
 
@@ -80,6 +81,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     QtiWifiCsiHal qtiWifiCsiHal;
     QtiSupplicantStaIfaceHal qtiSupplicantStaIfaceHal;
     QtiHostapdHal qtiHostapdHal;
+    QtiWifiHal qtiWifiHal;
 
     private boolean mIsQtiSupplicantHalInitialized = false;
     private boolean mIsQtiHostapdHalInitialized = false;
@@ -99,16 +101,10 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     private final HashMap<Integer, IVendorEventCallback> mVendorEventCallbacksMap = new HashMap<>();
 
     public ThermalData getThermalInfo(String ifname) {
-        final String kGetThermalCmd = "GET_THERMAL_INFO";
+        final String kGetThermalCmd = "DRIVER GET_THERMAL_INFO";
         enforceAccessPermission();
         String reply;
-        if (isSupplicantIface(ifname)) {
-            reply = qtiSupplicantStaIfaceHal.doDriverCmd(kGetThermalCmd);
-        } else if (isHostapdIface(ifname)) {
-            reply = qtiHostapdHal.doDriverCmd(ifname, kGetThermalCmd);
-        } else {
-            return null;
-        }
+        reply = qtiWifiHal.doQtiWifiCmd(ifname, kGetThermalCmd);
 
         int[] info = new int[2];
         try {
@@ -173,18 +169,11 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             return false;
         }
 
-        final String kSetTxPowerCmd = "SET_TXPOWER " + dbm;
+        final String kSetTxPowerCmd = "DRIVER SET_TXPOWER " + dbm;
         String reply;
 
         Log.v(TAG, "setTxPower: ifname=" + ifname + " TX power=" + dbm);
-        if (isSupplicantIface(ifname)) {
-            reply = qtiSupplicantStaIfaceHal.doDriverCmd(kSetTxPowerCmd);
-        } else if (isHostapdIface(ifname)) {
-            reply = qtiHostapdHal.doDriverCmd(ifname, kSetTxPowerCmd);
-        } else {
-            Log.e(TAG, "Invalid ifame:" + ifname);
-            return false;
-        }
+        reply = qtiWifiHal.doQtiWifiCmd(ifname, kSetTxPowerCmd);
 
         return setSuccess(reply);
     }
@@ -205,18 +194,11 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         }
 
         //we're not checking ofdmlvl here and mode is treated as 0 in hal layer if not 1.
-        final String kSetAniCmd = "SET_ANI_LEVEL " + mode + " " + ofdmlvl;
+        final String kSetAniCmd = "DRIVER SET_ANI_LEVEL " + mode + " " + ofdmlvl;
         String reply;
 
         Log.v(TAG, "setAni: ifname=" + ifname + " mode=" + mode + " level=" + ofdmlvl);
-        if (isSupplicantIface(ifname)) {
-            reply = qtiSupplicantStaIfaceHal.doDriverCmd(kSetAniCmd);
-        } else if (isHostapdIface(ifname)) {
-            reply = qtiHostapdHal.doDriverCmd(ifname, kSetAniCmd);
-        } else {
-            Log.e(TAG, "Invalid ifame:" + ifname);
-            return false;
-        }
+        reply = qtiWifiHal.doQtiWifiCmd(ifname, kSetAniCmd);
         return setSuccess(reply);
     }
 
@@ -236,21 +218,13 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             throw new IllegalArgumentException("ifname cannot be null");
         }
 
-        final String kSetCongestionReportCmd = "SET_CONGESTION_REPORT "
+        final String kSetCongestionReportCmd = "DRIVER SET_CONGESTION_REPORT "
                      + enable + " " + thre + " " + inter;
         String reply;
-        //threshold and interval limitation are checked in hostapd
+        //threshold and interval limitation are checked in hal layer
         Log.v(TAG, "setCongestionReport: ifname=" + ifname + " enable=" + enable
                 + " threshold=" + thre + " interval=" + inter);
-        if (isSupplicantIface(ifname)) {
-            Log.e(TAG, "only available for SAP mode.");
-            return false;
-        } else if (isHostapdIface(ifname)) {
-            reply = qtiHostapdHal.doDriverCmd(ifname, kSetCongestionReportCmd);
-        } else {
-            Log.e(TAG, "Invalid ifame:" + ifname);
-            return false;
-        }
+        reply = qtiWifiHal.doQtiWifiCmd(ifname, kSetCongestionReportCmd);
         return setSuccess(reply);
     }
 
@@ -323,9 +297,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
         mQtiIntentFilter = new IntentFilter();
         mQtiIntentFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-        if (isAutoPlatform()) {
-            mQtiIntentFilter.addAction(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
-        }
+        mQtiIntentFilter.addAction(WifiManager.WIFI_AP_STATE_CHANGED_ACTION);
         mContext.registerReceiver(mQtiReceiver, mQtiIntentFilter);
 
         mHandlerThread = new HandlerThread("QtiWifiHandlerThread");
@@ -335,16 +307,14 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mVendorEventCallbacks = new RemoteCallbackList<>();
 
         mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
-        if (isAutoPlatform() && mWifiManager.isWifiApEnabled()) {
+        checkAndInitQtiWifiHal();
+        if (mWifiManager.isWifiApEnabled()) {
             Log.d(TAG, "isWifiApEnabled true");
             checkAndInitHostapdVendorHal();
             mIsQtiHostapdHalInitialized = true;
         }
         if (mWifiManager.isWifiEnabled()) {
             Log.d(TAG, "isWifiEnabled true");
-            if (!isAutoPlatform()) {
-                checkAndInitCfrHal();
-            }
             checkAndInitSupplicantStaIfaceHal();
             mIsQtiSupplicantHalInitialized = true;
         }
@@ -366,6 +336,13 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         Log.i(TAG, "checkAndInitCfrHal");
         qtiWifiCsiHal = new QtiWifiCsiHal();
         qtiWifiCsiHal.initialize();
+    }
+
+    public void checkAndInitQtiWifiHal() {
+        Log.i(TAG, "checkAndInitQtiWifiHal");
+        qtiWifiHal = new QtiWifiHal();
+        qtiWifiHal.initialize();
+        qtiWifiHal.registerWifiHalListener(mHalListener);
     }
 
     public void checkAndInitSupplicantStaIfaceHal() {
@@ -393,7 +370,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                      Log.i(TAG, "received wifi disabled");
                      mIsQtiSupplicantHalInitialized = false;
                  }
-            } else if (isAutoPlatform() && WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(action)) {
+            } else if (WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(action)) {
                 int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_AP_STATE, WifiManager.WIFI_AP_STATE_FAILED);
                 if ((state == WifiManager.WIFI_AP_STATE_ENABLED) && !mIsQtiHostapdHalInitialized) {
                     Log.i(TAG, "Didn't initialize hostapd hal, now initializing");
@@ -446,9 +423,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             throw new IllegalArgumentException("Callback must not be null");
         }
         enforceAccessPermission();
-        if (DBG) {
-            Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
-        }
+        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
         synchronized(mVendorEventCallbacks) {
             mVendorEventCallbacks.register(callback);
             mVendorEventCallbacksMap.put(callbackIdentifier, callback);
@@ -456,12 +431,14 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     }
 
     public void unregisterVendorEventCallback(int callbackIdentifier) {
-        if (DBG) {
-            Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
-        }
+        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
         enforceAccessPermission();
         synchronized(mVendorEventCallbacks) {
             IVendorEventCallback callback = mVendorEventCallbacksMap.get(callbackIdentifier);
+            if (callback == null) {
+                Log.d(TAG, "no such registered callback found, id=" + callbackIdentifier);
+                return;
+            }
             mVendorEventCallbacks.unregister(callback);
             mVendorEventCallbacksMap.remove(callbackIdentifier);
         }
@@ -471,23 +448,15 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         enforceAccessPermission();
         List<String> ifaces = new ArrayList<String>();
 
-        String[] hapdIfaces = listHostapdVendorInterfaces();
-        if (hapdIfaces != null && hapdIfaces.length > 0) {
-            ifaces.addAll(Arrays.asList(hapdIfaces));
+        IfaceInfo[] wifiHalIfaces = qtiWifiHal.getAvailableInterfaces();
+
+        if (wifiHalIfaces != null && wifiHalIfaces.length > 0) {
+            for (IfaceInfo iface : wifiHalIfaces) {
+                ifaces.add(iface.name);
+            }
         }
 
-        String[] suppIfaces = listSupplicantVendorInterfaces();
-        if (suppIfaces != null && suppIfaces.length > 0) {
-            ifaces.addAll(Arrays.asList(suppIfaces));
-        }
         return ifaces;
-    }
-
-    public boolean isAutoPlatform() {
-        if (ISupplicantVendor.VERSION == 2) {
-            return true;
-        }
-        return false;
     }
 
     private boolean setSuccess(String reply) {
@@ -508,9 +477,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             throw new IllegalArgumentException("Callback must not be null");
         }
         enforceAccessPermission();
-        if (DBG) {
-            Log.i(TAG, "registerCsiCallback uid=%" + Binder.getCallingUid());
-        }
+        Log.i(TAG, "registerCsiCallback uid=%" + Binder.getCallingUid());
         mQtiWifiThreadRunner.run(() ->
             qtiWifiCsiHal.registerCsiCallback(binder, callback, callbackIdentifier));
     }
@@ -518,9 +485,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     @Override
     public void unregisterCsiCallback(int callbackIdentifier) {
         enforceAccessPermission();
-        if (DBG) {
-            Log.i(TAG, "unregisterCsiCallback uid=%" + Binder.getCallingUid());
-        }
+        Log.i(TAG, "unregisterCsiCallback uid=%" + Binder.getCallingUid());
         mQtiWifiThreadRunner.run(() ->
             qtiWifiCsiHal.unregisterCsiCallback(callbackIdentifier));
     }

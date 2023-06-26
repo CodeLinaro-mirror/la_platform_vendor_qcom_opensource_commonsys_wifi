@@ -14,6 +14,7 @@ android_app {
            "java/com/qualcomm/qti/server/qtiwifi/QtiSupplicantStaIfaceHalHidlImpl.java",
            "java/com/qualcomm/qti/server/qtiwifi/QtiSupplicantStaIfaceHal.java",
            "java/com/qualcomm/qti/server/qtiwifi/QtiWifiCsiHal.java",
+           "java/com/qualcomm/qti/server/qtiwifi/QtiWifiHal.java",
            "java/com/qualcomm/qti/server/qtiwifi/QtiWifiService.java",
            "java/com/qualcomm/qti/server/qtiwifi/QtiWifiThreadRunner.java",
            "java/com/qualcomm/qti/server/qtiwifi/QtiWifiServiceImpl.java",
@@ -29,6 +30,7 @@ android_app {
                  "vendor.qti.hardware.wifi.supplicant-V2.1-java",
                  "vendor.qti.hardware.wifi.supplicant-V2.2-java",
                  "vendor.qti.hardware.wifi.hostapd-V1-java",
+                 "vendor.qti.hardware.wifi.qtiwifi-V1-java",
                  "vendor.qti.hardware.wifi.supplicant-V2-java",
                  ],
     libs: [
