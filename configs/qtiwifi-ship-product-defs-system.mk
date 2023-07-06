@@ -8,5 +8,8 @@ PRODUCT_PACKAGES += android.hardware.wifi.supplicant-V1.3-java
 PRODUCT_PACKAGES += android.hidl.base-V1.0-java
 PRODUCT_PACKAGES += android.hidl.manager-V1.0-java
 PRODUCT_PACKAGES += qti_supplicant_interface.xml
+ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
+PRODUCT_PACKAGES += QtiWifiSettingsApp
+endif # userdebug | eng
 endif #TARGET_HAS_LOW_RAM
 endif # TARGET_FWK_SUPPORTS_FULL_VALUEADDS | TARGET_BOARD_AUTO
