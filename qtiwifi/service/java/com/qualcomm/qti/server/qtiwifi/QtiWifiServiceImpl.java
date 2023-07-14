@@ -457,11 +457,15 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public void unregisterVendorEventCallback(int callbackIdentifier) {
         if (DBG) {
-            Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
+            Log.i(TAG, "unregisterVendorEventCallback uid=%" + Binder.getCallingUid());
         }
         enforceAccessPermission();
         synchronized(mVendorEventCallbacks) {
             IVendorEventCallback callback = mVendorEventCallbacksMap.get(callbackIdentifier);
+            if (callback == null) {
+                Log.d(TAG, "no such registered callback found, id=" + callbackIdentifier);
+                return;
+            }
             mVendorEventCallbacks.unregister(callback);
             mVendorEventCallbacksMap.remove(callbackIdentifier);
         }
