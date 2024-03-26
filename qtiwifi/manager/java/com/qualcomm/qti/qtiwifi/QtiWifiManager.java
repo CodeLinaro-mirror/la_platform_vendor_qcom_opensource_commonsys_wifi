@@ -262,6 +262,38 @@ public class QtiWifiManager {
         }
     }
 
+    public String[] listHostapdVendorInterfaces() {
+        try {
+            return mService.listHostapdVendorInterfaces();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public String[] listSupplicantVendorInterfaces() {
+        try {
+            return mService.listSupplicantVendorInterfaces();
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public void doHostapdDriverCmd(String ifname, String command) {
+        try {
+            mService.doHostapdDriverCmd(ifname, command);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    public void doSupplicantDriverCmd(String command) {
+        try {
+            mService.doSupplicantDriverCmd(command);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
     /**
      * Base class for vendor event callback. Should be extended by applications and
      * set when calling
