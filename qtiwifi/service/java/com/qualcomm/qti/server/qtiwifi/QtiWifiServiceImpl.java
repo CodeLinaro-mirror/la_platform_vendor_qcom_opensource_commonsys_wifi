@@ -512,12 +512,12 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mQtiWifiThreadRunner.run(() -> qtiWifiCsiHal.stopCsi());
     }
 
-    public void doHostapdDriverCmd(String ifname, String command) {
-        mQtiWifiThreadRunner.run(() -> qtiHostapdHal.doDriverCmd(ifname, command));
+    public String doHostapdDriverCmd(String ifname, String command) {
+       return qtiHostapdHal.doDriverCmd(ifname, command);
     }
 
-    public void doSupplicantDriverCmd(String command) {
-        mQtiWifiThreadRunner.run(() -> qtiSupplicantStaIfaceHal.doDriverCmd(command));
+    public String doSupplicantDriverCmd(String command) {
+        return qtiSupplicantStaIfaceHal.doDriverCmd(command);
     }
 
     private void enforceAccessPermission() {
