@@ -278,17 +278,17 @@ public class QtiWifiManager {
         }
     }
 
-    public void doHostapdDriverCmd(String ifname, String command) {
+    public String doHostapdDriverCmd(String ifname, String command) {
         try {
-            mService.doHostapdDriverCmd(ifname, command);
+            return mService.doHostapdDriverCmd(ifname, command);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
     }
 
-    public void doSupplicantDriverCmd(String command) {
+    public String doSupplicantDriverCmd(String command) {
         try {
-            mService.doSupplicantDriverCmd(command);
+            return mService.doSupplicantDriverCmd(command);
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
         }
