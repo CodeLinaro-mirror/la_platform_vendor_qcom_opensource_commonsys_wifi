@@ -32,14 +32,14 @@ android_app {
                  "vendor.qti.hardware.wifi.hostapd-V1-java",
                  "vendor.qti.hardware.wifi.qtiwifi-V1-java",
                  "vendor.qti.hardware.wifi.supplicant-V2-java",
+                 "android.hidl.manager-V1.0-java",
+                 "android.hidl.base-V1.0-java"
                  ],
     libs: [
           "android.hardware.wifi.supplicant-V1.0-java",
           "android.hardware.wifi.supplicant-V1.1-java",
           "android.hardware.wifi.supplicant-V1.2-java",
           "android.hardware.wifi.supplicant-V1.3-java",
-          "android.hidl.manager-V1.0-java",
-          "android.hidl.base-V1.0-java"
           ],
 
     certificate: "platform",
