@@ -52,4 +52,8 @@ interface IQtiWifiManager
     boolean enableCarPlayIE(in CarPlayIEData carPlayIEData);
     boolean disableCarPlayIE();
     boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
+    String[] listHostapdVendorInterfaces();
+    String[] listSupplicantVendorInterfaces();
+    String doHostapdDriverCmd(String ifname, String command);
+    String doSupplicantDriverCmd(String command);
 }
