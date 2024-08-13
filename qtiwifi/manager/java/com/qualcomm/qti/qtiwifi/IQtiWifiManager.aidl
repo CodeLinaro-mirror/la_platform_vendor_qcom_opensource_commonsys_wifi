@@ -54,6 +54,6 @@ interface IQtiWifiManager
     boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
     String[] listHostapdVendorInterfaces();
     String[] listSupplicantVendorInterfaces();
-    void doHostapdDriverCmd(String ifname, String command);
-    void doSupplicantDriverCmd(String command);
+    String doHostapdDriverCmd(String ifname, String command);
+    String doSupplicantDriverCmd(String command);
 }
