@@ -384,7 +384,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         }
     };
 
-    private String[] listHostapdVendorInterfaces() {
+    public String[] listHostapdVendorInterfaces() {
         if (!mIsQtiHostapdHalInitialized) {
             return null;
         }
@@ -392,7 +392,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             qtiHostapdHal.listVendorInterfaces(), null);
     }
 
-    private String[] listSupplicantVendorInterfaces() {
+    public String[] listSupplicantVendorInterfaces() {
         if (!mIsQtiSupplicantHalInitialized) {
             return null;
         }
@@ -510,6 +510,14 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mQtiWifiThreadRunner.run(() -> qtiSupplicantStaIfaceHal.doDriverCmd(
 				"CSI stop"));
         mQtiWifiThreadRunner.run(() -> qtiWifiCsiHal.stopCsi());
+    }
+
+    public String doHostapdDriverCmd(String ifname, String command) {
+       return qtiHostapdHal.doDriverCmd(ifname, command);
+    }
+
+    public String doSupplicantDriverCmd(String command) {
+        return qtiSupplicantStaIfaceHal.doDriverCmd(command);
     }
 
     private void enforceAccessPermission() {
