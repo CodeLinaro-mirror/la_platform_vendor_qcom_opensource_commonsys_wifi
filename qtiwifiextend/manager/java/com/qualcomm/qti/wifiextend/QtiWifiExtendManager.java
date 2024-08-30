@@ -19,6 +19,7 @@
  * Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
+package com.qualcomm.qti.wifiextend;
 
 import android.content.Context;
 import android.os.Handler;
@@ -49,11 +50,34 @@ public class QtiWifiExtendManager {
     private static IQtiWifiExtendManager mUniqueInstance = null;
     IQtiWifiExtendManager mService;
 
+    public static final String WIFI_AP_STATE_CHANGED_ACTION =
+        "com.qualcomm.qti.server.wifiextend.WIFI_AP_STATE_CHANGED";
+
+    public static final String WIFI_AP_CLIENTS_CHANGED_ACTION =
+        "com.qualcomm.qti.server.wifiextend.WIFI_AP_CLIENTS_CHANGED";
+
+    public static final String EXTRA_WIFI_AP_STATE = "wifi_state";
+    public static final String EXTRA_WIFI_AP_FAILURE_REASON = "WIFI_AP_FAILURE_REASON";
+    public static final String EXTRA_PREVIOUS_WIFI_AP_STATE = "previous_wifi_state";
+    public static final String EXTRA_WIFI_AP_INTERFACE_NAME = "WIFI_AP_INTERFACE_NAME";
+
+    public static final int SAP_CLIENT_BLOCK_REASON_CODE_BLOCKED_BY_USER = 0;
+    public static final int SAP_CLIENT_BLOCK_REASON_CODE_NO_MORE_STAS = 1;
+    public static final int SAP_CLIENT_DISCONNECT_REASON_CODE_UNSPECIFIED = 2;
+
+    public static final int SAP_START_FAILURE_GENERAL= 0;
+    public static final int SAP_START_FAILURE_NO_CHANNEL = 1;
+    public static final int SAP_START_FAILURE_UNSUPPORTED_CONFIGURATION = 2;
+    public static final int SAP_START_FAILURE_USER_REJECTED = 3;
     public static final int WIFI_AP_STATE_DISABLING = 10;
     public static final int WIFI_AP_STATE_DISABLED = 11;
     public static final int WIFI_AP_STATE_ENABLING = 12;
     public static final int WIFI_AP_STATE_ENABLED = 13;
     public static final int WIFI_AP_STATE_FAILED = 14;
+
+    public static final int COEX_RESTRICTION_WIFI_DIRECT = 0x1 << 0;
+    public static final int COEX_RESTRICTION_SOFTAP = 0x1 << 1;
+    public static final int COEX_RESTRICTION_WIFI_AWARE = 0x1 << 2;
 
     private QtiWifiExtendManager(Context context, IQtiWifiExtendManager service) {
         mContext = context;
@@ -75,8 +99,8 @@ public class QtiWifiExtendManager {
         throws ServiceFailedToBindException {
         if (!mServiceAlreadyBound  || mUniqueInstance == null) {
             Log.d(TAG, "bindService- !mServiceAlreadyBound  || uniqueInstance == null");
-            Intent serviceIntent = new Intent("com.qualcomm.qti.server.qtiwifi.WifiExtendService");
-            serviceIntent.setPackage("com.qualcomm.qti.server.qtiwifiextend");
+            Intent serviceIntent = new Intent("com.qualcomm.qti.server.wifiextend.WifiExtendService");
+            serviceIntent.setPackage("com.qualcomm.qti.server.wifiextend");
             if (!context.bindService(serviceIntent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.e(TAG,"Failed to connect to Provider service");
                 throw new ServiceFailedToBindException("Failed to connect to Provider service");
@@ -122,9 +146,9 @@ public class QtiWifiExtendManager {
         public abstract void onAvailable(QtiWifiExtendManager manager);
     }
 
-    public boolean startSoftAp(SoftApConfiguration softApConfig) {
+    public boolean startSoftAp(SoftApConfiguration config) {
         try {
-            return mService.startSoftAp(softApConfig);
+            return mService.startSoftAp(config);
         } catch (RemoteException e) {
             throw e.rethrowAsRuntimeException();
         }
@@ -214,12 +238,12 @@ public class QtiWifiExtendManager {
         }
     }
 
-    public void UnregisterExtendSoftApCallback(ExtendSoftApCallback callback) {
+    public void unregisterExtendSoftApCallback(ExtendSoftApCallback callback) {
         if (callback == null) throw new IllegalArgumentException("callback cannot be null");
         Log.v(TAG, "UnregisterExtendSoftApCallback: callback=" + callback);
 
         try {
-            mService.UnregisterExtendSoftApCallback(callback.hashCode());
+            mService.unregisterExtendSoftApCallback(callback.hashCode());
         } catch (RemoteException e) {
             throw e.rethrowAsRuntimeException();
         }
@@ -327,17 +351,17 @@ public class QtiWifiExtendManager {
         }
     }
 
-    public String getClientIpAddress(byte[] macAddr) {
+    public String getClientIpAddress(WifiClient client) {
         try {
-            return mService.getClientIpAddress(macAddr);
+            return mService.getClientIpAddress(client);
         } catch (RemoteException e) {
             throw e.rethrowAsRuntimeException();
         }
     }
 
-    public boolean setDataSharing(boolean enable) {
+    public boolean setDataSharing(String ifname, boolean enable) {
         try {
-            return mService.setDataSharing(enable);
+            return mService.setDataSharing(ifname, enable);
         } catch (RemoteException e) {
             throw e.rethrowAsRuntimeException();
         }

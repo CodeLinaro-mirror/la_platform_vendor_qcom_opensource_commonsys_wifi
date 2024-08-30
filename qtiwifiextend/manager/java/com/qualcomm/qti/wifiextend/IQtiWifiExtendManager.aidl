@@ -27,6 +27,7 @@ import com.qualcomm.qti.wifiextend.IExtendSoftApCallback;
 import com.qualcomm.qti.wifiextend.IVendorEventCallback;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 import com.qualcomm.qti.wifiextend.ThermalData;
+import com.qualcomm.qti.wifiextend.WifiClient;
 
 /**
   * Service interface that exposes primitives for controlling SoftAp on extend target board
@@ -38,7 +39,7 @@ interface IQtiWifiExtendManager {
     boolean setSoftApConfiguration(in SoftApConfiguration softApConfig);
     int getWifiApState();
     void registerExtendSoftApCallback(in IExtendSoftApCallback callback, in int callbackIdentifier);
-    void UnregisterExtendSoftApCallback(in int callbackIdentifier);
+    void unregisterExtendSoftApCallback(in int callbackIdentifier);
 
     int[] getUsableChannels(int band);
     void setCoexUnsafeChannels(in List<CoexUnsafeChannel> coexUnsafeChannels);
@@ -51,8 +52,8 @@ interface IQtiWifiExtendManager {
     boolean setTxPower(String ifname, int dbm);
     boolean setAni(String ifname, int mode, int ofdmlvl);
     boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
-    String getClientIpAddress(in byte[] macAddr);
-    boolean setDataSharing(boolean enable);
+    String getClientIpAddress(in WifiClient client);
+    boolean setDataSharing(String ifname, boolean enable);
 
     /* IVendorEventCallback defined for vendor value added feature like:
      * thermal management, congestion report

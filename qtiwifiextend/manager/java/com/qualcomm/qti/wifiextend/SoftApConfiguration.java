@@ -31,10 +31,8 @@ import android.text.TextUtils;
 import java.util.Objects;
 import java.util.List;
 import java.util.ArrayList;
+import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
-
-import com.qualcomm.qti.wifiextend.WifiSsid;
-import com.qualcomm.qti.wifiextend.MacAddress;
 
 public final class SoftApConfiguration implements Parcelable {
 
@@ -95,9 +93,10 @@ public final class SoftApConfiguration implements Parcelable {
         return true;
     }
 
-private final WifiSsid mWifiSsid;
-private final MacAddress mBssid;
-private final String mPassphrase;
+    private final WifiSsid mWifiSsid;
+    private final MacAddress mBssid;
+    private final String mPassphrase;
+
     /**
      * The operating security type of the AP.
      * One of the following security types:
@@ -288,6 +287,13 @@ private final String mPassphrase;
         return mSecurityType;
     }
 
+    public int getBand() {
+        return mChannels.keyAt(0);
+    }
+
+    public int getChannel() {
+        return mChannels.valueAt(0);
+    }
     public int[] getBands() {
         int[] bands = new int[mChannels.size()];
         for (int i = 0; i < bands.length; i++) {
@@ -410,6 +416,18 @@ private final String mPassphrase;
 
         public Builder setWifiSsid(WifiSsid wifiSsid) {
             mWifiSsid = wifiSsid;
+            return this;
+        }
+
+        public Builder setWifiSsid(String ssid) {
+            if (ssid == null) {
+                mWifiSsid = null;
+                return this;
+            }
+
+            //Preconditions.checkStringNotEmpty(ssid);
+            //Preconditions.checkArgument(StandardCharsets.UTF_8.newEncoder().canEncode(ssid));
+            mWifiSsid = WifiSsid.fromUtf8Text(ssid);
             return this;
         }
 

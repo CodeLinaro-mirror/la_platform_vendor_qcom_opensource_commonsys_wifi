@@ -25,8 +25,16 @@ package com.qualcomm.qti.wifiextend;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import java.nio.charset.StandardCharsets;
+import android.text.TextUtils;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CoderResult;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 public final class WifiSsid implements  Parcelable {
@@ -44,6 +52,62 @@ public final class WifiSsid implements  Parcelable {
             return new WifiSsid(null);
         }
         return new WifiSsid(utf8Text.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Create a WifiSsid from a string matching the format of {@link WifiSsid#toString()}.
+     * If the string is null, return an empty WifiSsid object which will return an empty byte array
+     * and empty text.
+     * @throws IllegalArgumentException if the string is unquoted but not hexadecimal,
+     *                                  or if the hexadecimal string is odd-length.
+     * @hide
+     */
+    public static WifiSsid fromString(String string) {
+        if (string == null) {
+            return new WifiSsid(null);
+        }
+        final int length = string.length();
+        if ((length > 1) && (string.charAt(0) == '"') && (string.charAt(length - 1) == '"')) {
+            return new WifiSsid(string.substring(1, length - 1).getBytes(StandardCharsets.UTF_8));
+        }
+        return new WifiSsid(HexEncoding.decode(string));
+    }
+
+    /**
+     * Returns the string representation of the WifiSsid. If the SSID can be decoded as UTF-8, it
+     * will be returned in plain text surrounded by double quotation marks. Otherwise, it is
+     * returned as an unquoted string of hex digits. This format is consistent with
+     * {@link WifiInfo#getSSID()} and {@link WifiConfiguration#SSID}.
+     *
+     * @return SSID as double-quoted plain text from UTF-8 or unquoted hex digits
+     */
+    @Override
+    public String toString() {
+        String utf8String = decodeSsid(mBytes, StandardCharsets.UTF_8);
+        if (TextUtils.isEmpty(utf8String)) {
+            return HexEncoding.encodeToString(mBytes, false /* upperCase */);
+        }
+        return "\"" + utf8String + "\"";
+    }
+
+    /**
+     * Returns the given SSID bytes as a String decoded using the given Charset. If the bytes cannot
+     * be decoded, then this returns {@code null}.
+     * @param ssidBytes SSID as bytes
+     * @param charset Charset to decode with
+     * @return SSID as string, or {@code null}.
+     */
+    private static String decodeSsid(byte[] ssidBytes, Charset charset) {
+        CharsetDecoder decoder = charset.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        CharBuffer out = CharBuffer.allocate(32);
+        CoderResult result = decoder.decode(ByteBuffer.wrap(ssidBytes), out, true);
+        out.flip();
+        if (result.isError()) {
+            return null;
+        }
+        return out.toString();
     }
 
     public boolean equals(Object thatObject) {
@@ -67,6 +131,14 @@ public final class WifiSsid implements  Parcelable {
 
     public int describeContents() {
         return 0;
+    }
+
+    /**
+     * Returns the raw byte array representing this SSID.
+     * @return the SSID
+     */
+    public byte[] getBytes() {
+        return mBytes.clone();
     }
 
     public static final Creator<WifiSsid> CREATOR =

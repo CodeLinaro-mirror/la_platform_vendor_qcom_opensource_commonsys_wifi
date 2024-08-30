@@ -30,17 +30,18 @@ import com.qualcomm.qti.wifiextend.MacAddress;
 public final class SoftApInfo implements Parcelable {
 
     public static final int CHANNEL_WIDTH_AUTO = -1;
-     public static final int CHANNEL_WIDTH_INVALID = 0;
-     public static final int CHANNEL_WIDTH_20MHZ_NOHT = 1;
-     public static final int CHANNEL_WIDTH_20MHZ = 2;
-     public static final int CHANNEL_WIDTH_40MHZ = 3;
-     public static final int CHANNEL_WIDTH_80MHZ = 4;
-     public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 5;
-     public static final int CHANNEL_WIDTH_160MHZ = 6;
-     public static final int CHANNEL_WIDTH_2160MHZ = 7;
-     public static final int CHANNEL_WIDTH_4320MHZ = 8;
-     public static final int CHANNEL_WIDTH_6480MHZ = 9;
-     public static final int CHANNEL_WIDTH_8640MHZ = 10;
+    public static final int CHANNEL_WIDTH_INVALID = 0;
+    public static final int CHANNEL_WIDTH_20MHZ_NOHT = 1;
+    public static final int CHANNEL_WIDTH_20MHZ = 2;
+    public static final int CHANNEL_WIDTH_40MHZ = 3;
+    public static final int CHANNEL_WIDTH_80MHZ = 4;
+    public static final int CHANNEL_WIDTH_80MHZ_PLUS_MHZ = 5;
+    public static final int CHANNEL_WIDTH_160MHZ = 6;
+    public static final int CHANNEL_WIDTH_2160MHZ = 7;
+    public static final int CHANNEL_WIDTH_4320MHZ = 8;
+    public static final int CHANNEL_WIDTH_6480MHZ = 9;
+    public static final int CHANNEL_WIDTH_8640MHZ = 10;
+    public static final int CHANNEL_WIDTH_320MHZ = 11;
 
     public static final int WIFI_STANDARD_UNKNOWN = 0;
     public static final int WIFI_STANDARD_LEGACY = 1;
