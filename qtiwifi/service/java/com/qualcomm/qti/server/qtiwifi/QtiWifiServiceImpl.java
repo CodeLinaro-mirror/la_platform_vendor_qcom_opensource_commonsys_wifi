@@ -124,7 +124,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
         String[] ifnames = listHostapdVendorInterfaces();
-        if (ifnames.length == 0) {
+        if (ifnames == null || ifnames.length == 0) {
             Log.e(TAG, "can't get ap interface.");
             return false;
         }
@@ -138,7 +138,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public boolean disableCarPlayIE() {
         String[] ifnames = listHostapdVendorInterfaces();
-        if (ifnames.length == 0) {
+        if (ifnames == null || ifnames.length == 0) {
             Log.e(TAG, "can't get ap interface.");
             return false;
         }
@@ -330,27 +330,27 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mWifiManager.unregisterSoftApCallback(mSoftApCallback);
     }
 
-    public void checkAndInitHostapdVendorHal() {
+    private void checkAndInitHostapdVendorHal() {
         Log.i(TAG, "checkAndInitHostapdVendorHal");
         qtiHostapdHal = new QtiHostapdHal();
         qtiHostapdHal.initialize();
         qtiHostapdHal.registerWifiHalListener(mHalListener);
     }
 
-    public void checkAndInitCfrHal() {
+    private void checkAndInitCfrHal() {
         Log.i(TAG, "checkAndInitCfrHal");
         qtiWifiCsiHal = new QtiWifiCsiHal();
         qtiWifiCsiHal.initialize();
     }
 
-    public void checkAndInitQtiWifiHal() {
+    private void checkAndInitQtiWifiHal() {
         Log.i(TAG, "checkAndInitQtiWifiHal");
         qtiWifiHal = new QtiWifiHal();
         qtiWifiHal.initialize();
         qtiWifiHal.registerWifiHalListener(mHalListener);
     }
 
-    public void checkAndInitSupplicantStaIfaceHal() {
+    private void checkAndInitSupplicantStaIfaceHal() {
         Log.i(TAG, "checkAndInitSupplicantStaIfaceHal");
         qtiSupplicantStaIfaceHal = new QtiSupplicantStaIfaceHal();
         qtiSupplicantStaIfaceHal.initialize();
@@ -527,11 +527,19 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     }
 
     public String doHostapdDriverCmd(String ifname, String command) {
-       return mQtiWifiThreadRunner.call(() ->
+        if (!mIsQtiHostapdHalInitialized) {
+            Log.e(TAG, "QtiHostapdHal not initialized yet");
+            return null;
+        }
+        return mQtiWifiThreadRunner.call(() ->
            qtiHostapdHal.doDriverCmd(ifname, command), null);
     }
 
     public String doSupplicantDriverCmd(String command) {
+        if (!mIsQtiSupplicantHalInitialized) {
+            Log.e(TAG, "QtiSupplicantHal not initialized yet");
+            return null;
+        }
         return mQtiWifiThreadRunner.call(() ->
             qtiSupplicantStaIfaceHal.doDriverCmd(command), null);
     }
