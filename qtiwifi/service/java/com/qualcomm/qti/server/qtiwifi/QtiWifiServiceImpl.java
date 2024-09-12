@@ -322,6 +322,8 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     protected void destroyService() {
         Log.d(TAG, "destroyService()");
+        mHandlerThread.quit();
+        mContext.unregisterReceiver(mQtiReceiver);
         mServiceStarted = false;
     }
 
@@ -512,11 +514,13 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     }
 
     public String doHostapdDriverCmd(String ifname, String command) {
-       return qtiHostapdHal.doDriverCmd(ifname, command);
+       return mQtiWifiThreadRunner.call(() ->
+           qtiHostapdHal.doDriverCmd(ifname, command), null);
     }
 
     public String doSupplicantDriverCmd(String command) {
-        return qtiSupplicantStaIfaceHal.doDriverCmd(command);
+        return mQtiWifiThreadRunner.call(() ->
+            qtiSupplicantStaIfaceHal.doDriverCmd(command), null);
     }
 
     private void enforceAccessPermission() {
