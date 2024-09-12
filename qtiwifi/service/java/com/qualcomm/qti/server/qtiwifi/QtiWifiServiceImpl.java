@@ -363,7 +363,6 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                  int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN);
                  if ((state == WifiManager.WIFI_STATE_ENABLED) && !mIsQtiSupplicantHalInitialized) {
                      Log.i(TAG, "Didn't iniltailze the supplicant hals, now initializing");
-                     checkAndInitCfrHal();
                      checkAndInitSupplicantStaIfaceHal();
                      mIsQtiSupplicantHalInitialized = true;
                  } else if (state == WifiManager.WIFI_STATE_DISABLED) {
