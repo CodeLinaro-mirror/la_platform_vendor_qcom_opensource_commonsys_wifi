@@ -72,7 +72,7 @@ import com.qualcomm.qti.wifiextend.QtiWifiExtendManager;
 
 public class HostapdHalAidlImp implements IHostapdHal {
     private static final String TAG = "ExtendHostapdHalAidlImp";
-    private static final String HAL_INSTANCE_NAME = IHostapd.DESCRIPTOR + "/default";
+    private static final String HAL_INSTANCE_NAME = IHostapd.DESCRIPTOR + "/cem";
     public static final long WAIT_FOR_DEATH_TIMEOUT_MS = 50L;
 
     private final Object mLock = new Object();
@@ -823,8 +823,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
             nwParams.ssid[i] = ssid.get(i);
         }
 
-        //config doesn't contain Vendor Elements,
-        //then nwParams also doesn't have vendorElements Info.
+        nwParams.vendorElements = new byte[0];
 
         nwParams.isMetered = isMetered;
         nwParams.isHidden = config.isHiddenSsid();

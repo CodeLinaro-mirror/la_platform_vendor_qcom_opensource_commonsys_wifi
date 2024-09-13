@@ -27,8 +27,6 @@ import android.os.Parcelable;
 import android.util.Log;
 
 import java.util.Objects;
-import com.qualcomm.qti.wifiextend.MacAddress;
-
 
 public final class WifiClient implements Parcelable {
 
@@ -51,7 +49,7 @@ public final class WifiClient implements Parcelable {
     }
 
     private WifiClient(Parcel in) {
-        mMacAddress = in.readParcelable(null);
+        mMacAddress = in.readParcelable(this.getClass().getClassLoader());
         mApInstanceIdentifier = in.readString();
     }
 

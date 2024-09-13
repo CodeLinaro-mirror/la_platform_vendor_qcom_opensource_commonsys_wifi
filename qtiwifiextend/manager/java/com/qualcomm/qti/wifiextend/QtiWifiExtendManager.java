@@ -33,15 +33,6 @@ import android.content.ComponentName;
 import android.content.Intent;
 import java.util.List;
 
-import com.qualcomm.qti.wifiextend.ThermalData;
-import com.qualcomm.qti.wifiextend.CoexUnsafeChannel;
-import com.qualcomm.qti.wifiextend.WifiClient;
-import com.qualcomm.qti.wifiextend.SoftApInfo;
-import com.qualcomm.qti.wifiextend.SoftApConfiguration;
-import com.qualcomm.qti.wifiextend.IQtiWifiExtendManager;
-import com.qualcomm.qti.wifiextend.IExtendSoftApCallback;
-import com.qualcomm.qti.wifiextend.IVendorEventCallback;
-
 public class QtiWifiExtendManager {
     private static final String TAG = "QtiWifiExtendManager";
     private static ApplicationBinderCallback mApplicationCallback = null;
@@ -99,7 +90,7 @@ public class QtiWifiExtendManager {
         throws ServiceFailedToBindException {
         if (!mServiceAlreadyBound  || mUniqueInstance == null) {
             Log.d(TAG, "bindService- !mServiceAlreadyBound  || uniqueInstance == null");
-            Intent serviceIntent = new Intent("com.qualcomm.qti.server.wifiextend.WifiExtendService");
+            Intent serviceIntent = new Intent("com.qualcomm.qti.server.wifiextend.QtiWifiExtendService");
             serviceIntent.setPackage("com.qualcomm.qti.server.wifiextend");
             if (!context.bindService(serviceIntent, mConnection, Context.BIND_AUTO_CREATE)) {
                 Log.e(TAG,"Failed to connect to Provider service");
@@ -146,6 +137,16 @@ public class QtiWifiExtendManager {
         public abstract void onAvailable(QtiWifiExtendManager manager);
     }
 
+    /**
+     * startuSoftAp() will start softAp with default AP configuration
+     * or configuration from file which is written in last time.
+     * @param config, Note: suggest always invoke startSoftAp()
+     * without bringing config since it can not be saved
+     * suggest to use API setSoftApConfiguration(SoftApConfiguration config)
+     * to set and save AP config before startSoftAp()
+     *
+     * @return
+    */
     public boolean startSoftAp(SoftApConfiguration config) {
         try {
             return mService.startSoftAp(config);
@@ -249,6 +250,38 @@ public class QtiWifiExtendManager {
         }
     }
 
+    /**
+     * Returns a list of {@link int[] Channels} for the specified band and operational
+     * mode(s) per the current regulatory domain and device-specific constraints such as concurrency
+     * state and interference due to other radios. An empty list implies that there are no available
+     * channels for use.
+     *
+     * Note: the {@code band} parameter which is specified as a {@code WifiChipAidlImpl#WIFI_BAND_*}
+     * constant is limited to one of the band values specified below. Specifically, if the 5GHz
+     * band is included then it must include the DFS channels - an exception will be thrown
+     * otherwise. The caller should not make any assumptions about whether DFS channels are allowed.
+     * This API will indicate whether DFS channels are allowed for the specified operation mode(s)
+     * per device policy.
+     *
+     * @param band one of the following band constants defined in {@code WifiChipAidlImpl#WIFI_BAND_*}
+     *             constants.
+     *             1. {@code WifiChipAidlImpl#WIFI_BAND_UNSPECIFIED}=0 - no band specified; Looks for the
+     *                channels in all the available bands - 2.4 GHz, 5 GHz, 6 GHz and 60 GHz
+     *             2. {@code WifiChipAidlImpl#WIFI_BAND_24_GHZ}=1
+     *             3. {@code WifiChipAidlImpl#WIFI_BAND_5_GHZ_WITH_DFS}=6
+     *             4. {@code WifiChipAidlImpl#WIFI_BAND_BOTH_WITH_DFS}=7
+     *             5. {@code WifiChipAidlImpl#WIFI_BAND_6_GHZ}=8
+     *             6. {@code WifiChipAidlImpl#WIFI_BAND_24_5_WITH_DFS_6_GHZ}=15
+     *             7. {@code WifiChipAidlImpl#WIFI_BAND_60_GHZ}=16
+     *             8. {@code WifiChipAidlImpl#WIFI_BAND_24_5_WITH_DFS_6_60_GHZ}=31
+     * other Params are WifiAvailableChannel.OP_MODE_SAP, WifiAvailableChannel.FILTER_CONCURRENCY}
+     * detail see WifiNative.getUsableChannels(int band)
+     * @return a list of {@link int[] for avaiable channels}
+     *
+     * @throws UnsupportedOperationException - if this API is not supported on this device
+     *         or IllegalArgumentException - if the band specified is not one among the list
+     *         of bands mentioned above.
+     */
     public int[] getUsableChannels(int band) {
         try {
             return mService.getUsableChannels(band);
