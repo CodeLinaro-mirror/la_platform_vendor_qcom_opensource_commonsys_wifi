@@ -17,6 +17,8 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.ServiceSpecificException;
 import android.util.Log;
+import java.util.HashSet;
+
 
 import com.qualcomm.qti.server.wifiextend.util.GeneralUtil.Mutable;
 import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
@@ -30,7 +32,7 @@ import java.util.regex.Pattern;
  */
 public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     private static final String TAG = "ExtendQtiHostapdHalAidlImpl";
-    private static final String HAL_INSTANCE_NAME = IHostapdVendor.DESCRIPTOR + "/default";
+    private static final String HAL_INSTANCE_NAME = IHostapdVendor.DESCRIPTOR + "/cem";
 
     private static final int MIN_PORT_NUM = 0;
     private static final int MAX_PORT_NUM = 65535;
@@ -39,7 +41,7 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     private boolean mVerboseLoggingEnabled = false;
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
-    private Set<String> mActiveInterfaces;
+    private Set<String> mActiveInterfaces = new HashSet<>();
     private QtiWifiHalListener mWifiHalListener;
 
     // hostapd AIDL interface objects

@@ -208,6 +208,21 @@ public class SoftApManager implements ActiveModeManager {
         return "StateMachine not active";
     }
 
+    private boolean isBridgedMode() {
+        return (mCurrentSoftApConfiguration != null
+                && (mCurrentSoftApConfiguration.getBands().length > 1));
+    }
+
+    private boolean isOweTransition() {
+         return (mCurrentSoftApConfiguration != null
+                && mCurrentSoftApConfiguration.getSecurityType()
+                        == SoftApConfiguration.SECURITY_TYPE_WPA3_OWE_TRANSITION);
+    }
+
+    private boolean isBridgeRequired() {
+        return isBridgedMode() || isOweTransition();
+    }
+
     public SoftApModeConfiguration getSoftApModeConfiguration() {
         return new SoftApModeConfiguration(
                 mCurrentSoftApConfiguration, mCountryCode);
@@ -294,6 +309,8 @@ public class SoftApManager implements ActiveModeManager {
 
         intent.putExtra(QtiWifiExtendManager.EXTRA_WIFI_AP_INTERFACE_NAME, mApInterfaceName);
 
+        mContext.sendBroadcastAsUser(intent, UserHandle.ALL,
+                 android.Manifest.permission.ACCESS_WIFI_STATE);
     }
 
     private int setMacAddress() {
@@ -401,7 +418,9 @@ public class SoftApManager implements ActiveModeManager {
             }
             return false;
         }
-        if (!mAllowedClientList.contains(newClient.getMacAddress())) {
+        //Only when mAllowedClientList is not empty, mAllowedClientList take effects
+        if (!mAllowedClientList.isEmpty() &&
+            !mAllowedClientList.contains(newClient.getMacAddress())) {
             //mSoftApCallback.onBlockedClientConnecting(newClient,
             //        QtiWifiExtendManager.SAP_CLIENT_BLOCK_REASON_CODE_BLOCKED_BY_USER);
             Log.d(getTag(), "Force disconnect for unauthorized client: " + newClient);
@@ -585,7 +604,7 @@ public class SoftApManager implements ActiveModeManager {
                         //remove 6G bands.
                         mApInterfaceName = mWifiNative.setupInterfaceForSoftApMode(
                                 mWifiNativeInterfaceCallback, mRequestorWs,
-                                mCurrentSoftApConfiguration.getBand(), SoftApManager.this);
+                                mCurrentSoftApConfiguration.getBand(), isBridgeRequired(), SoftApManager.this);
                         if (TextUtils.isEmpty(mApInterfaceName)) {
                             Log.e(getTag(), "setup failure when creating ap interface.");
                             updateApState(QtiWifiExtendManager.WIFI_AP_STATE_FAILED,
@@ -670,7 +689,8 @@ public class SoftApManager implements ActiveModeManager {
                 while (iterator.hasNext()) {
                     WifiClient client = iterator.next();
                     if (mBlockedClientList.contains(client.getMacAddress())
-                              && !mAllowedClientList.contains(client.getMacAddress())) {
+                              || (!mAllowedClientList.isEmpty()
+                              && !mAllowedClientList.contains(client.getMacAddress()))) {
                         Log.d(getTag(), "Force disconnect for not allowed client: " + client);
                         if (!mWifiNative.forceClientDisconnect(
                                 mApInterfaceName, client.getMacAddress(),
@@ -807,6 +827,9 @@ public class SoftApManager implements ActiveModeManager {
                 Handler handler = mStateMachine.getHandler();
 
                 //mSarManager.setSapWifiState(QtiWifiExtendManager.WIFI_AP_STATE_ENABLED);
+                 Log.d(getTag(), "enter startStated");
+                 updateApState(QtiWifiExtendManager.WIFI_AP_STATE_ENABLED,
+                       QtiWifiExtendManager.WIFI_AP_STATE_ENABLING, 0);
                 Log.d(getTag(), "Resetting connected clients on start");
                 mConnectedClientWithApInfoMap.clear();
                 mPendingDisconnectClients.clear();
