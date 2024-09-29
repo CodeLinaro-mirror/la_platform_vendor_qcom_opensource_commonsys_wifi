@@ -20,7 +20,6 @@ import android.os.ServiceSpecificException;
 import android.util.Log;
 
 import com.qualcomm.qti.server.wifiextend.util.GeneralUtil.Mutable;
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,14 +37,28 @@ public class QtiWifiHal {
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = false;
-    private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
+    private boolean mServiceDeclared = false;
     private Set<IfaceInfo> mActiveInterfaces = new HashSet<>();
     private QtiWifiHalListener mWifiHalListener;
 
     // qtiwifi AIDL interface objects
     private IQtiWifi mIQtiWifi = null;
     private QtiWifiDeathRecipient mQtiWifiDeathRecipient;
+    private InternalDeathRecipient mFrameworkDeathRecipient;
+
+    /* Hal vendor event string */
+    public static final String THERMAL_EVENT_STR = "CTRL-EVENT-THERMAL-CHANGED";
+    public static final String CONGESTION_EVENT_STR = "CTRL-EVENT-CONGESTION-REPORT";
+    public static final Pattern THERMAL_PATTERN = Pattern.compile(THERMAL_EVENT_STR + " level=([0-9]+)");
+    public static final Pattern CONGESTION_PATTERN = Pattern.compile(CONGESTION_EVENT_STR + " percentage=([0-9]+)");
+
+    // Defined to be used by QtiWifiHal
+    public interface QtiWifiHalListener {
+        void onThermalChanged(String ifname, int level);
+
+        void onCongestionChanged(String ifname, int percent);
+    }
 
     /**
      * Register Hal listener for vendor events
@@ -65,8 +78,8 @@ public class QtiWifiHal {
             }
 
             // CTRL-EVENT-THERMAL-CHANGED level=3
-            if (eventStr.startsWith(QtiWifiExtendServiceImpl.THERMAL_EVENT_STR)) {
-                    Matcher match = QtiWifiExtendServiceImpl.THERMAL_PATTERN.matcher(eventStr);
+            if (eventStr.startsWith(THERMAL_EVENT_STR)) {
+                    Matcher match = THERMAL_PATTERN.matcher(eventStr);
                 if (match.find()) {
                     int level = Integer.parseInt(match.group(1));
                     mWifiHalListener.onThermalChanged(ifaceName, level);
@@ -74,8 +87,8 @@ public class QtiWifiHal {
                     Log.e(TAG, "Could not parse thermal event=" + eventStr);
                 }
             // CTRL-EVENT-CONGESTION-REPORT percentage=3
-            } else if (eventStr.startsWith(QtiWifiExtendServiceImpl.CONGESTION_EVENT_STR)) {
-                    Matcher match = QtiWifiExtendServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
+            } else if (eventStr.startsWith(CONGESTION_EVENT_STR)) {
+                    Matcher match = CONGESTION_PATTERN.matcher(eventStr);
                 if (match.find()) {
                     int percent = Integer.parseInt(match.group(1));
                     mWifiHalListener.onCongestionChanged(ifaceName, percent);
@@ -98,6 +111,17 @@ public class QtiWifiHal {
         }
     }
 
+    /**
+     * Framework death recipient object. Called if the death recipient registered with the HAL
+     * indicates that the service died.
+     */
+    public interface InternalDeathRecipient {
+        /**
+         * Called on service death.
+         */
+        void onDeath();
+    }
+
     private class QtiWifiDeathRecipient implements DeathRecipient {
         @Override
         public void binderDied() {
@@ -118,7 +142,7 @@ public class QtiWifiHal {
      *
      * @return true if the IQtiWifi service is declared
      */
-    public boolean initialize() {
+    public boolean initialize(InternalDeathRecipient internalDeathRecipient) {
         synchronized (mLock) {
             if (mIQtiWifi != null) {
                 Log.i(TAG, "Service is already initialized, skipping initialize method");
@@ -127,9 +151,10 @@ public class QtiWifiHal {
             if (mVerboseLoggingEnabled) {
                 Log.i(TAG, "Checking for IQtiWifi service.");
             }
-            mServiceDeclared = serviceDeclared();
+	    mServiceDeclared = serviceDeclared();
             getQtiWifiInstance();
-            return mServiceDeclared;
+	    mFrameworkDeathRecipient = internalDeathRecipient;
+	    return mServiceDeclared;
         }
     }
 
@@ -226,6 +251,7 @@ public class QtiWifiHal {
         synchronized (mLock) {
             mIQtiWifi = null;
             mActiveInterfaces.clear();
+	    mFrameworkDeathRecipient.onDeath();
         }
     }
 

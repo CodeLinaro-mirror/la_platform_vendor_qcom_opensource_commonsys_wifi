@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  * Copyright (C) 2017 The Android Open Source Project
@@ -20,8 +20,6 @@
 package com.qualcomm.qti.server.wifiextend;
 
 import android.util.Log;
-
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 
 public class QtiHostapdHal {
     private static final String TAG = "ExtendQtiHostapdHal";
@@ -120,15 +118,6 @@ public class QtiHostapdHal {
                 return null;
             }
             return mQtiHostapdHal.listVendorInterfaces();
-        }
-    }
-
-    /**
-     * Register Hal listener for vendor events
-     */
-    public void registerWifiHalListener(QtiWifiHalListener listener) {
-        synchronized (mLock) {
-            mQtiHostapdHal.registerWifiHalListener(listener);
         }
     }
 

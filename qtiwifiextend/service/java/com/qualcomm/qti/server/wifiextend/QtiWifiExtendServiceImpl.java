@@ -60,19 +60,18 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+
 import java.util.Date;
 import java.text.SimpleDateFormat;
 
 import com.qualcomm.qti.wifiextend.WifiClient;
+import com.qualcomm.qti.wifiextend.ThermalData;
 import com.qualcomm.qti.wifiextend.IQtiWifiExtendManager;
-import com.qualcomm.qti.wifiextend.IVendorEventCallback;
 import com.qualcomm.qti.wifiextend.CoexUnsafeChannel;
+import com.qualcomm.qti.wifiextend.IVendorEventCallback;
 import com.qualcomm.qti.wifiextend.IExtendSoftApCallback;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 import com.qualcomm.qti.wifiextend.SoftApInfo;
-import com.qualcomm.qti.wifiextend.WifiClient;
-import com.qualcomm.qti.wifiextend.ThermalData;
 import com.qualcomm.qti.wifiextend.QtiWifiExtendManager;
 import vendor.qti.hardware.wifi.qtiwifi.IfaceInfo;
 
@@ -88,103 +87,24 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
     private QtiWifiExtendThreadRunner mQtiWifiThreadRunner;
 
     WifiNative mWifiNative;
-    QtiWifiHal mQtiWifiHal;
 
     SoftApConfigStore mSoftApConfigStore;
     WifiCountryCode mWifiCountryCode;
     ActiveModeWarden mActiveModeWarden;
     private final WifiCountryCode mCountryCode;
 
-    private QtiWifiHalListener mQtiHalListener;
     private SoftApTracker mSoftApTracker;
-
-    private boolean mIsQtiWifiHalInitialized = false;
-
-    /* Hal vendor event string */
-    public static final String THERMAL_EVENT_STR = "CTRL-EVENT-THERMAL-CHANGED";
-    public static final String CONGESTION_EVENT_STR = "CTRL-EVENT-CONGESTION-REPORT";
-    public static final Pattern THERMAL_PATTERN = Pattern.compile(THERMAL_EVENT_STR + " level=([0-9]+)");
-    public static final Pattern CONGESTION_PATTERN = Pattern.compile(CONGESTION_EVENT_STR + " percentage=([0-9]+)");
-
-    /* Vendor callbacks */
-    private final RemoteCallbackList<IVendorEventCallback> mVendorEventCallbacks;
-    private final HashMap<Integer, IVendorEventCallback> mVendorEventCallbacksMap = new HashMap<>();
 
     /* Extend SoftAp callbacks */
     private final RemoteCallbackList<IExtendSoftApCallback> mExtendSoftApCallbacks;
     private final HashMap<Integer, IExtendSoftApCallback> mExtendSoftApCallbacksMap = new HashMap<>();
 
-    // Defined to be used by QtiWifiHal
-    public interface QtiWifiHalListener {
-        void onThermalChanged(String ifname, int level);
-
-        void onCongestionChanged(String ifname, int percent);
-    }
-
-    private int toFrameworkThermalLevel(int original_val) {
-        switch (original_val) {
-            case 0:
-                return ThermalData.THERMAL_INFO_LEVEL_FULL_PERF;
-            case 2:
-                return ThermalData.THERMAL_INFO_LEVEL_REDUCED_PERF;
-            case 4:
-                return ThermalData.THERMAL_INFO_LEVEL_TX_OFF;
-            case 5:
-                return ThermalData.THERMAL_INFO_LEVEL_SHUT_DOWN;
-        }
-        return ThermalData.THERMAL_INFO_LEVEL_UNKNOWN;
-    }
-
-    private class QtiWifiHalListenerImpl implements QtiWifiHalListener {
-        int mLastThermalLevel = ThermalData.THERMAL_INFO_LEVEL_UNKNOWN;
-
-        @Override
-        public void onThermalChanged(String ifname, int level) {
-            synchronized (mVendorEventCallbacks) {
-                level = toFrameworkThermalLevel(level);
-                // Reduce duplicate Thermal change event report.
-                if (level == mLastThermalLevel) {
-                    Log.d(TAG, "ignore duplicate report thermal with same level " + level);
-                    return;
-                }
-                mLastThermalLevel = level;
-                // Trigger callbacks
-                int itemCount = mVendorEventCallbacks.beginBroadcast();
-                for (int i = 0; i < itemCount; ++i) {
-                    try {
-                        mVendorEventCallbacks.getBroadcastItem(i).onThermalChanged(ifname, level);
-                    } catch (Exception e) {
-                        Log.e(TAG, "onThermalChanged error.");
-                    }
-                }
-                mVendorEventCallbacks.finishBroadcast();
-            }
-        }
-
-        @Override
-        public void onCongestionChanged(String ifname, int percentage) {
-            synchronized (mVendorEventCallbacks) {
-                // Trigger callbacks
-                int itemCount = mVendorEventCallbacks.beginBroadcast();
-                for (int i = 0; i < itemCount; ++i) {
-                    try {
-                        mVendorEventCallbacks.getBroadcastItem(i).onCongestionChanged(
-                                ifname, percentage);
-                    } catch (Exception e) {
-                        Log.e(TAG, "onCongestionChanged error.");
-                    }
-                }
-                mVendorEventCallbacks.finishBroadcast();
-            }
-        }
-    }
 
     public QtiWifiExtendServiceImpl(Context context,  QtiWifiExtendInjector wifiInjector) {
         Log.d(TAG, "QtiWifiExtendServiceImpl ctor");
         mContext = context;
         mWifiInjector = wifiInjector;
 
-        mVendorEventCallbacks = new RemoteCallbackList<>();
         mExtendSoftApCallbacks = new RemoteCallbackList<>();
 
         mHandlerThread = mWifiInjector.getWifiHandlerThread();
@@ -200,14 +120,8 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
         mActiveModeWarden.registerSoftApListener(mSoftApTracker);
         mCountryCode = mWifiInjector.getWifiCountryCode();
 
-        mQtiHalListener = new QtiWifiHalListenerImpl();
-        mQtiWifiHal = mWifiInjector.getQtiWifiHal();
         mWifiNative = mWifiInjector.getWifiNative();
 
-        if (mWifiNative.isWifiStarted()) {
-            checkAndInitQtiWifiHal();
-            mIsQtiWifiHalInitialized = true;
-        }
     }
 
     protected void destroyService() {
@@ -226,6 +140,7 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
         }
 
         Log.d(TAG, "startSoftApInternal" + apConfig);
+        mSoftApConfigStore.setSoftApConfiguration(softApConfig);
         mActiveModeWarden.startSoftAp(apConfig, requestorWs);
         return true;
     }
@@ -283,42 +198,8 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
         return mWifiNative.doHostapdCtrlIfaceCmd(ifname, command);
     }
 
-    public void checkAndInitQtiWifiHal() {
-        Log.i(TAG, "checkAndInitQtiWifiHal");
-        mQtiWifiHal.initialize();
-        mQtiWifiHal.registerWifiHalListener(mQtiHalListener);
-    }
-
     public ThermalData getThermalInfo(String ifname) {
-        if (mIsQtiWifiHalInitialized == false) {
-            Log.e(TAG, "QtiWifiHal is not initialzied");
-            return null;
-        }
-
-        final String kGetThermalCmd = "DRIVER GET_THERMAL_INFO";
-        enforceAccessPermission();
-        String reply;
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kGetThermalCmd), null);
-
-        int[] info = new int[2];
-        try {
-            if (reply == null) {
-                Log.e(TAG, "timeout to get thermal info");
-                return null;
-            } else {
-                String[] infoString = reply.split("\\s+");
-                info[0] = Integer.parseInt(infoString[0]);
-                info[1] = Integer.parseInt(infoString[1]);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "invalid result for get thermal info");
-            return null;
-        }
-        ThermalData thermalData = new ThermalData();
-        thermalData.setTemperature(info[0]);
-        thermalData.setThermalLevel(toFrameworkThermalLevel(info[1]));
-        return thermalData;
+		return mWifiNative.getThermalInfo(ifname);
     }
 
     /**
@@ -331,29 +212,7 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
      * @throws IllegalArgumentException if ifname is null.
      */
     public boolean setTxPower(String ifname, int dbm) {
-        if (mIsQtiWifiHalInitialized == false) {
-            Log.e(TAG, "QtiWifiHal is not initialzied");
-            return false;
-        }
-
-        if (ifname == null) {
-            throw new IllegalArgumentException("ifname cannot be null");
-        }
-
-        // vendor requirement to limit max tx power >= 8dBm.
-        if (dbm < 8) {
-            Log.e(TAG, "Expecting max tx power limit >= 8 dBm, while actual dBm=" + dbm);
-            return false;
-        }
-
-        final String kSetTxPowerCmd = "DRIVER SET_TXPOWER " + dbm;
-        String reply;
-
-        Log.v(TAG, "setTxPower: ifname=" + ifname + " TX power=" + dbm);
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetTxPowerCmd), null);
-
-        return setSuccess(reply);
+        return mWifiNative.setTxPower(ifname, dbm);
     }
 
     /**
@@ -367,25 +226,7 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
      * @throws IllegalArgumentException if ifname is null.
      */
     public boolean setAni(String ifname, int mode, int ofdmlvl) {
-        if (mIsQtiWifiHalInitialized == false) {
-            Log.e(TAG, "QtiWifiHal is not initialzied");
-            return false;
-        }
-
-        if (ifname == null) {
-            throw new IllegalArgumentException("ifname cannot be null");
-        }
-
-        // we're not checking ofdmlvl here and mode is treated as 0 in hal layer if not
-        // 1.
-        final String kSetAniCmd = "DRIVER SET_ANI_LEVEL " + mode + " " + ofdmlvl;
-        String reply;
-
-        Log.v(TAG, "setAni: ifname=" + ifname + " mode=" + mode + " level=" + ofdmlvl);
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetAniCmd), null);
-
-        return setSuccess(reply);
+        return mWifiNative.setAni(ifname, mode, ofdmlvl);
     }
 
     /**
@@ -400,89 +241,24 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
      * @throws IllegalArgumentException if ifname is null.
      */
     public boolean setCongestionReport(String ifname, int enable, int thre, int inter) {
-        if (mIsQtiWifiHalInitialized == false) {
-            Log.e(TAG, "QtiWifiHal is not initialzied");
-            return false;
-        }
-
-        if (ifname == null) {
-            throw new IllegalArgumentException("ifname cannot be null");
-        }
-
-        final String kSetCongestionReportCmd = "DRIVER SET_CONGESTION_REPORT "
-                + enable + " " + thre + " " + inter;
-        String reply;
-        // threshold and interval limitation are checked in hal layer
-        Log.v(TAG, "setCongestionReport: ifname=" + ifname + " enable=" + enable
-                + " threshold=" + thre + " interval=" + inter);
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetCongestionReportCmd), null);
-
-        return setSuccess(reply);
+        return mWifiNative.setCongestionReport(ifname, enable, thre, inter);
     }
 
     public String getClientIpAddress(WifiClient client) {
-        if (client == null) {
-            throw new IllegalArgumentException("WifiClient cannot be null");
-        }
-
-        String ifname = client.getApInstanceIdentifier();
-        String macaddr = client.getMacAddress().toString();
-        String kGetClientIpAddressCmd = "DRIVER GET_CLIENT_IP_ADDRESS " + macaddr;
-        String reply;
-        Log.v(TAG, "getClientIpAddress: ifname = " + ifname + " macAddr = " + macaddr);
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kGetClientIpAddressCmd), null);
-        return reply;
+        return mWifiNative.getClientIpAddress(client);
     }
 
     public boolean setDataSharing(String ifname, boolean enable) {
-        if (mIsQtiWifiHalInitialized == false) {
-            Log.e(TAG, "QtiWifiHal is not initialzied");
-            return false;
-        }
-
-        String kSetDataSharingCmd = "DRIVER SET_DATA_SHARING " + enable;
-        String reply;
-        Log.v(TAG, "setDataSharing: ifname = " + ifname + " enable = " + enable);
-        reply = mQtiWifiThreadRunner.call(
-                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetDataSharingCmd), null);
-        return setSuccess(reply);
+        return mWifiNative.setDataSharing(ifname, enable);
     }
 
     public void registerVendorEventCallback(IVendorEventCallback callback,
             int callbackIdentifier) {
-        // verify arguments
-        if (callback == null) {
-            throw new IllegalArgumentException("Callback must not be null");
-        }
-        enforceAccessPermission();
-        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
-        synchronized (mVendorEventCallbacks) {
-            mVendorEventCallbacks.register(callback);
-            mVendorEventCallbacksMap.put(callbackIdentifier, callback);
-        }
+        mWifiNative.registerVendorEventCallback(callback, callbackIdentifier);
     }
 
     public void unregisterVendorEventCallback(int callbackIdentifier) {
-        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
-        enforceAccessPermission();
-        synchronized (mVendorEventCallbacks) {
-            IVendorEventCallback callback = mVendorEventCallbacksMap.get(callbackIdentifier);
-            if (callback == null) {
-                Log.d(TAG, "no such registered callback found, id=" + callbackIdentifier);
-                return;
-            }
-            mVendorEventCallbacks.unregister(callback);
-            mVendorEventCallbacksMap.remove(callbackIdentifier);
-        }
-    }
-
-    private boolean setSuccess(String reply) {
-        if (reply != null && reply.contains("OK")) {
-            return true;
-        }
-        return false;
+        mWifiNative.unregisterVendorEventCallback(callbackIdentifier);
     }
 
     static boolean isValidBandForGetUsableChannels(int band) {
@@ -502,13 +278,15 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
     }
 
     public int[] getUsableChannels(int band) {
+        int[] channels = new int[] {};
         if (!isValidBandForGetUsableChannels(band)) {
-            throw new IllegalArgumentException("Unsupported band: " + band);
+            Log.e(TAG, "Unsupported band: " + band);
+            return channels;
         }
-        int[] channels = mQtiWifiThreadRunner.call(
+        channels = mQtiWifiThreadRunner.call(
             () -> mWifiNative.getUsableChannels(band), null);
         if (channels == null) {
-            throw new UnsupportedOperationException();
+            Log.e(TAG, "no usable channeles");
         }
         return channels;
     }
@@ -662,8 +440,4 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
             android.Manifest.permission.ACCESS_WIFI_STATE, TAG);
     }
 
-    private void enforceChangePermission() {
-        mContext.enforceCallingOrSelfPermission(
-            android.Manifest.permission.CHANGE_WIFI_STATE, TAG);
-    }
 }

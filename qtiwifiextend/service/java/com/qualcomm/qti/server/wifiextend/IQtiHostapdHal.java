@@ -1,11 +1,9 @@
-/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 package com.qualcomm.qti.server.wifiextend;
-
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 
 /** Abstraction of Qti Hostapd HAL interface */
 interface IQtiHostapdHal {
@@ -42,8 +40,4 @@ interface IQtiHostapdHal {
      */
     String[] listVendorInterfaces();
 
-    /**
-     * Register Hal listener for vendor events
-     */
-    void registerWifiHalListener(QtiWifiHalListener listener);
 }

@@ -11,7 +11,7 @@ PRODUCT_PACKAGES += qti_supplicant_interface.xml
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
 PRODUCT_PACKAGES += QtiWifiSettingsApp
 endif # userdebug | eng
-ifeq ($(ENABLE_REMOTE_CONTROL_CEM_MODULE),true)
+ifeq ($(TARGET_CONTROL_REMOTE_CEM_WLAN),true)
 PRODUCT_PACKAGES += QtiWifiExtendService
 PRODUCT_PACKAGES += statemachine-to-app
 PRODUCT_PACKAGES += qtiwifi_extend_manager
