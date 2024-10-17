@@ -57,11 +57,9 @@ public class WifiNative {
 
     public WifiNative(WifiHal wifihal,
                    HostapdHal hostapdHal,
-                   QtiHostapdHal qtiHostapdHal,
                    QtiWifiExtendThreadRunner handler) {
             mWifiHal = wifihal;
             mHostapdHal = hostapdHal;
-            mQtiHostapdHal = qtiHostapdHal;
             mEventHandler = handler;
             mWifiEventCallback = new WifiEventCallback();
             mWifiChipEventCallback = new WifiChipEventCallback();
@@ -165,12 +163,15 @@ public class WifiNative {
 
     public String setupInterfaceForSoftApMode(
             @NonNull InterfaceCallback interfaceCallback, @NonNull WorkSource requestorWs,
-            int band, @NonNull SoftApManager softApManager) {
+            int band, boolean isBridged, @NonNull SoftApManager softApManager) {
+            if (!startWifiHal()) {
+                Log.e(TAG, "wifi HAL fail to start");
+            }
             if (!initializeAndStartHostapd()) {
                 Log.e(TAG, "hostapd fail to start");
             }
 
-            WifiApIface apIface = createBridgeApInterface();
+            WifiApIface apIface = createApInterface(isBridged);
             if (apIface != null) {
                 //Init vendor hostapd HAL when AP interface create successfully
                 checkAndInitHostapdVendorHal();
@@ -268,9 +269,11 @@ public class WifiNative {
 
     public void checkAndInitHostapdVendorHal() {
         Log.i(TAG, "checkAndInitHostapdVendorHal");
-        //qtiHostapdHal = new QtiHostapdHal();
+        mQtiHostapdHal = new QtiHostapdHal();
         mQtiHostapdHal.initialize();
+	//Thermal and congestion report callback are registered into qtiwifi HAL
         mQtiHostapdHal.registerWifiHalListener(null);
+	mIsQtiHostapdHalInitialized = true;
     }
 
     public String[] listHostapdVendorInterfaces() {
@@ -294,7 +297,8 @@ public class WifiNative {
         }
     }
 
-    private WifiApIface createBridgeApInterface() {
+    private WifiApIface createApInterface(boolean isBridged) {
+        int request_mode_id = 3;
         synchronized(mLock) {
             if (!isWifiStarted()) {
                 return null;
@@ -309,10 +313,18 @@ public class WifiNative {
                 Log.e(TAG, "Fail to get wifi chip from wifi Hal");
                 return null;
             }
+            if (!mWifiChip.configureChip(request_mode_id)) {
+                Log.e(TAG, "Fail to configure wifi chip mode id");
+                return null;
+            }
             WifiApIface iface = null;
-            iface =(WifiApIface) mWifiChip.createBridgedApIface();
+            if (isBridged == true) {
+                iface =(WifiApIface) mWifiChip.createBridgedApIface();
+            } else {
+                iface =(WifiApIface) mWifiChip.createApIface();
+            }
             if (iface == null) {
-                Log.e(TAG, "createBridgeApInterface: failed to create bridgedAp interface");
+                Log.e(TAG, "createApInterface: failed to create Ap interface");
                 return null;
             }
             String ifaceName = iface.getName();
@@ -324,12 +336,12 @@ public class WifiNative {
     public void teardownInterface(@NonNull String ifaceName) {
        if (getApIface(ifaceName) == null) return;
        if (!mWifiChip.removeApIface(ifaceName)) {
-            Log.e(TAG, "Fail to teardown interface " + ifaceName);
-       	    return;
+            Log.e(TAG, "Iwifichip fail to remove Ap interface " + ifaceName);
        }
        stopHostapd(ifaceName);
        stopWifiHal();
        mWifiApIfaces.remove(ifaceName);
+       mIsQtiHostapdHalInitialized = false;
     }
 
     public void stopHostapd(@NonNull String ifaceName) {
@@ -442,7 +454,6 @@ public class WifiNative {
                         Log.d(TAG, "start IWifi succeeded after trying "
                                  + triedCount + " times");
                     }
-                    //WifiChipInfo[] wifiChipInfos = getAllChipInfo();
                     return true;
                 } else if (status == WifiHal.WIFI_STATUS_ERROR_NOT_AVAILABLE) {
                     // Should retry. Hal might still be stopping. the registered event

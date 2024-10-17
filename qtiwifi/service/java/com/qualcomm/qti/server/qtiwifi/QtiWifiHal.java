@@ -24,6 +24,7 @@ import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.HashSet;
 
 /**
  * HAL calls to set up the qtiwifi daemon. Uses the AIDL qtiwifi interface.
@@ -39,7 +40,7 @@ public class QtiWifiHal {
     private boolean mVerboseLoggingEnabled = false;
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
-    private Set<IfaceInfo> mActiveInterfaces;
+    private Set<IfaceInfo> mActiveInterfaces = new HashSet<>();
     private WifiHalListener mWifiHalListener;
 
     // qtiwifi AIDL interface objects

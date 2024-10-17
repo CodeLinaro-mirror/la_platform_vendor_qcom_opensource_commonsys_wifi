@@ -322,6 +322,8 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     protected void destroyService() {
         Log.d(TAG, "destroyService()");
+        mHandlerThread.quit();
+        mContext.unregisterReceiver(mQtiReceiver);
         mServiceStarted = false;
     }
 
@@ -363,7 +365,6 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                  int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN);
                  if ((state == WifiManager.WIFI_STATE_ENABLED) && !mIsQtiSupplicantHalInitialized) {
                      Log.i(TAG, "Didn't iniltailze the supplicant hals, now initializing");
-                     checkAndInitCfrHal();
                      checkAndInitSupplicantStaIfaceHal();
                      mIsQtiSupplicantHalInitialized = true;
                  } else if (state == WifiManager.WIFI_STATE_DISABLED) {
@@ -513,11 +514,13 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     }
 
     public String doHostapdDriverCmd(String ifname, String command) {
-       return qtiHostapdHal.doDriverCmd(ifname, command);
+       return mQtiWifiThreadRunner.call(() ->
+           qtiHostapdHal.doDriverCmd(ifname, command), null);
     }
 
     public String doSupplicantDriverCmd(String command) {
-        return qtiSupplicantStaIfaceHal.doDriverCmd(command);
+        return mQtiWifiThreadRunner.call(() ->
+            qtiSupplicantStaIfaceHal.doDriverCmd(command), null);
     }
 
     private void enforceAccessPermission() {

@@ -24,4 +24,5 @@ java_library {
         "State.java",
         "StateMachine.java",
     ],
+    installable: true,
 }

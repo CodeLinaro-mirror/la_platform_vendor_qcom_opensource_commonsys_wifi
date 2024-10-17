@@ -99,7 +99,6 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
     private SoftApTracker mSoftApTracker;
 
     private boolean mIsQtiWifiHalInitialized = false;
-    //private boolean mIsQtiHostapdHalInitialized = false;
 
     /* Hal vendor event string */
     public static final String THERMAL_EVENT_STR = "CTRL-EVENT-THERMAL-CHANGED";
@@ -213,6 +212,7 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
 
     protected void destroyService() {
         Log.d(TAG, "destroyService()");
+        mHandlerThread.quit();
         mServiceStarted = false;
     }
 
@@ -285,7 +285,6 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
 
     public void checkAndInitQtiWifiHal() {
         Log.i(TAG, "checkAndInitQtiWifiHal");
-        //qtiWifiHal = new mQtiWifiHal();
         mQtiWifiHal.initialize();
         mQtiWifiHal.registerWifiHalListener(mQtiHalListener);
     }
@@ -633,12 +632,10 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
             mExtendSoftApCallbacks.finishBroadcast();
         }
 
-	@Override
+        @Override
         public void onInfoChanged(List<SoftApInfo> softApInfoList) {
             synchronized (mLock) {
-                for (SoftApInfo info : softApInfoList) {
-                    mSoftApInfoList.add(new SoftApInfo(info));
-                }
+                mSoftApInfoList = deepCopySoftApInfo(softApInfoList);
             }
             int itemCount = mExtendSoftApCallbacks.beginBroadcast();
             for (int i = 0; i < itemCount; i++) {
@@ -650,6 +647,14 @@ public final class QtiWifiExtendServiceImpl extends IQtiWifiExtendManager.Stub {
             }
             mExtendSoftApCallbacks.finishBroadcast();
         }
+    }
+
+    private List<SoftApInfo> deepCopySoftApInfo(List<SoftApInfo> softApInfoList) {
+        List<SoftApInfo> deepCopyList = new ArrayList<>();
+        for (SoftApInfo info : softApInfoList) {
+            deepCopyList.add(new SoftApInfo(info));
+        }
+        return deepCopyList;
     }
 
     private void enforceAccessPermission() {

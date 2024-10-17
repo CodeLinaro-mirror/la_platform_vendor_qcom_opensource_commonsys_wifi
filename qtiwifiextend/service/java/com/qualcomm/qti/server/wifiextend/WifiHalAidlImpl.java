@@ -41,9 +41,9 @@ import com.qualcomm.qti.server.wifiextend.WifiHal.IWifiHal;
 import com.qualcomm.qti.server.wifiextend.WifiHal;
 
 public class WifiHalAidlImpl implements IWifiHal {
-    private static final String TAG = "WifiHalAidlImpl";
+    private static final String TAG = "ExtendWifiHalAidlImpl";
     private static final String HAL_INSTANCE_NAME =
-            android.hardware.wifi.IWifi.DESCRIPTOR + "/default";
+            android.hardware.wifi.IWifi.DESCRIPTOR + "/cem";
 
     private android.hardware.wifi.IWifi mWifi;
     private Context mContext;
