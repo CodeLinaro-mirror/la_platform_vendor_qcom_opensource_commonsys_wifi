@@ -294,6 +294,14 @@ public class QtiWifiManager {
         }
     }
 
+    public String doHostapdCtrlIfaceCmd(String ifname, String command) {
+        try {
+            return mService.doHostapdCtrlIfaceCmd(ifname, command);
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
     /**
      * Base class for vendor event callback. Should be extended by applications and
      * set when calling
