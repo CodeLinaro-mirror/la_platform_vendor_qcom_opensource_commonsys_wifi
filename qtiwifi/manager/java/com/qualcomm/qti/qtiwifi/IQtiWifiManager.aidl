@@ -56,4 +56,5 @@ interface IQtiWifiManager
     String[] listSupplicantVendorInterfaces();
     String doHostapdDriverCmd(String ifname, String command);
     String doSupplicantDriverCmd(String command);
+    String doHostapdCtrlIfaceCmd(String ifname, String command);
 }
