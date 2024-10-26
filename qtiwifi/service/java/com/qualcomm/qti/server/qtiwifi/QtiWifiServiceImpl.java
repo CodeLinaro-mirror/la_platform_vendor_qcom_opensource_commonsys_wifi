@@ -37,6 +37,7 @@ import android.content.Context;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.HandlerExecutor;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemProperties;
@@ -123,7 +124,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public boolean enableCarPlayIE(CarPlayIEData carPlayIEData) {
         String[] ifnames = listHostapdVendorInterfaces();
-        if (ifnames.length == 0) {
+        if (ifnames == null || ifnames.length == 0) {
             Log.e(TAG, "can't get ap interface.");
             return false;
         }
@@ -137,7 +138,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
 
     public boolean disableCarPlayIE() {
         String[] ifnames = listHostapdVendorInterfaces();
-        if (ifnames.length == 0) {
+        if (ifnames == null || ifnames.length == 0) {
             Log.e(TAG, "can't get ap interface.");
             return false;
         }
@@ -318,34 +319,38 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             checkAndInitSupplicantStaIfaceHal();
             mIsQtiSupplicantHalInitialized = true;
         }
+        mWifiManager.registerSoftApCallback(new HandlerExecutor(mHandler), mSoftApCallback);
     }
 
     protected void destroyService() {
         Log.d(TAG, "destroyService()");
+        mHandlerThread.quit();
+        mContext.unregisterReceiver(mQtiReceiver);
         mServiceStarted = false;
+        mWifiManager.unregisterSoftApCallback(mSoftApCallback);
     }
 
-    public void checkAndInitHostapdVendorHal() {
+    private void checkAndInitHostapdVendorHal() {
         Log.i(TAG, "checkAndInitHostapdVendorHal");
         qtiHostapdHal = new QtiHostapdHal();
         qtiHostapdHal.initialize();
         qtiHostapdHal.registerWifiHalListener(mHalListener);
     }
 
-    public void checkAndInitCfrHal() {
+    private void checkAndInitCfrHal() {
         Log.i(TAG, "checkAndInitCfrHal");
         qtiWifiCsiHal = new QtiWifiCsiHal();
         qtiWifiCsiHal.initialize();
     }
 
-    public void checkAndInitQtiWifiHal() {
+    private void checkAndInitQtiWifiHal() {
         Log.i(TAG, "checkAndInitQtiWifiHal");
         qtiWifiHal = new QtiWifiHal();
         qtiWifiHal.initialize();
         qtiWifiHal.registerWifiHalListener(mHalListener);
     }
 
-    public void checkAndInitSupplicantStaIfaceHal() {
+    private void checkAndInitSupplicantStaIfaceHal() {
         Log.i(TAG, "checkAndInitSupplicantStaIfaceHal");
         qtiSupplicantStaIfaceHal = new QtiSupplicantStaIfaceHal();
         qtiSupplicantStaIfaceHal.initialize();
@@ -355,6 +360,26 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         qtiSupplicantStaIfaceHal.registerWifiHalListener(mHalListener);
     }
 
+    private WifiManager.SoftApCallback mSoftApCallback = new WifiManager.SoftApCallback() {
+        @Override
+        public void onStateChanged(int state, int failureReason) {
+            Log.d(TAG, "onStateChanged state=" + state + ", failureReason=" + failureReason);
+            if (failureReason != 0) {
+                Log.e(TAG, "AP state failed, state=" + state + ", failureReason=" + failureReason);
+                return;
+            }
+            if ((state == WifiManager.WIFI_AP_STATE_ENABLING || state == WifiManager.WIFI_AP_STATE_ENABLED)
+                        && !mIsQtiHostapdHalInitialized) {
+                Log.i(TAG, "Didn't initialize hostapd hal, now initializing");
+                checkAndInitHostapdVendorHal();
+                mIsQtiHostapdHalInitialized = true;
+            } else if (state == WifiManager.WIFI_AP_STATE_DISABLED || state == WifiManager.WIFI_AP_STATE_FAILED) {
+                Log.i(TAG, "received ap disabled or failed");
+                mIsQtiHostapdHalInitialized = false;
+            }
+        }
+    };
+
     private final BroadcastReceiver mQtiReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -363,23 +388,12 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                  int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, WifiManager.WIFI_STATE_UNKNOWN);
                  if ((state == WifiManager.WIFI_STATE_ENABLED) && !mIsQtiSupplicantHalInitialized) {
                      Log.i(TAG, "Didn't iniltailze the supplicant hals, now initializing");
-                     checkAndInitCfrHal();
                      checkAndInitSupplicantStaIfaceHal();
                      mIsQtiSupplicantHalInitialized = true;
                  } else if (state == WifiManager.WIFI_STATE_DISABLED) {
                      Log.i(TAG, "received wifi disabled");
                      mIsQtiSupplicantHalInitialized = false;
                  }
-            } else if (WifiManager.WIFI_AP_STATE_CHANGED_ACTION.equals(action)) {
-                int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_AP_STATE, WifiManager.WIFI_AP_STATE_FAILED);
-                if ((state == WifiManager.WIFI_AP_STATE_ENABLED) && !mIsQtiHostapdHalInitialized) {
-                    Log.i(TAG, "Didn't initialize hostapd hal, now initializing");
-                    checkAndInitHostapdVendorHal();
-                    mIsQtiHostapdHalInitialized = true;
-                } else if (state == WifiManager.WIFI_AP_STATE_DISABLED) {
-                    Log.i(TAG, "received ap disabled");
-                    mIsQtiHostapdHalInitialized = false;
-                }
             }
         }
     };
@@ -513,11 +527,21 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     }
 
     public String doHostapdDriverCmd(String ifname, String command) {
-       return qtiHostapdHal.doDriverCmd(ifname, command);
+        if (!mIsQtiHostapdHalInitialized) {
+            Log.e(TAG, "QtiHostapdHal not initialized yet");
+            return null;
+        }
+        return mQtiWifiThreadRunner.call(() ->
+           qtiHostapdHal.doDriverCmd(ifname, command), null);
     }
 
     public String doSupplicantDriverCmd(String command) {
-        return qtiSupplicantStaIfaceHal.doDriverCmd(command);
+        if (!mIsQtiSupplicantHalInitialized) {
+            Log.e(TAG, "QtiSupplicantHal not initialized yet");
+            return null;
+        }
+        return mQtiWifiThreadRunner.call(() ->
+            qtiSupplicantStaIfaceHal.doDriverCmd(command), null);
     }
 
     private void enforceAccessPermission() {

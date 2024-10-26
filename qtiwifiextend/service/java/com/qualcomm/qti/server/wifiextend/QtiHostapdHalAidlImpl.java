@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
-package com.qualcomm.qti.server.qtiwifi;
+package com.qualcomm.qti.server.wifiextend;
 
 import vendor.qti.hardware.wifi.hostapd.IHostapdVendor;
 import vendor.qti.hardware.wifi.hostapd.IHostapdVendorCallback;
@@ -17,21 +17,21 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.ServiceSpecificException;
 import android.util.Log;
+import java.util.HashSet;
 
-import com.qualcomm.qti.server.qtiwifi.util.GeneralUtil.Mutable;
-import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
+
+import com.qualcomm.qti.server.wifiextend.util.GeneralUtil.Mutable;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.HashSet;
 
 /**
  * HAL calls to set up/tear down the hostapd daemon and make requests
  * related to station mode. Uses the Vendor AIDL hostapd interface.
  */
 public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
-    private static final String TAG = "QtiHostapdHalAidlImpl";
-    private static final String HAL_INSTANCE_NAME = IHostapdVendor.DESCRIPTOR + "/default";
+    private static final String TAG = "ExtendQtiHostapdHalAidlImpl";
+    private static final String HAL_INSTANCE_NAME = IHostapdVendor.DESCRIPTOR + "/cem";
 
     private static final int MIN_PORT_NUM = 0;
     private static final int MAX_PORT_NUM = 65535;
@@ -41,44 +41,16 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
     private Set<String> mActiveInterfaces = new HashSet<>();
-    private WifiHalListener mWifiHalListener;
 
     // hostapd AIDL interface objects
     private IHostapdVendor mIHostapdVendor = null;
     private HostapdDeathRecipient mHostapdVendorDeathRecipient;
 
-    /**
-     * Register Hal listener for vendor events
-     */
-    public void registerWifiHalListener(WifiHalListener listener) {
-        mWifiHalListener = listener;
-    }
-
     private class HostapdVendorCallback extends IHostapdVendorCallback.Stub {
         @Override
         public void onCtrlEvent(String ifaceName, String eventStr) {
             Log.i(TAG, ifaceName + ": " + eventStr);
-            if (eventStr == null) return;
-            if (mWifiHalListener == null) return;
-
-            // CTRL-EVENT-THERMAL-CHANGED level=3
-            if (eventStr.startsWith(QtiWifiServiceImpl.THERMAL_EVENT_STR)) {
-                    Matcher match = QtiWifiServiceImpl.THERMAL_PATTERN.matcher(eventStr);
-                if (match.find()) {
-                    int level = Integer.parseInt(match.group(1));
-                    mWifiHalListener.onThermalChanged(ifaceName, level);
-                } else {
-                    Log.e(TAG, "Could not parse themal event=" + eventStr);
-                }
-            } else if (eventStr.startsWith(QtiWifiServiceImpl.CONGESTION_EVENT_STR)) {
-                    Matcher match = QtiWifiServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
-                if (match.find()) {
-                    int level = Integer.parseInt(match.group(1));
-                    mWifiHalListener.onCongestionChanged(ifaceName, level);
-                } else {
-                    Log.e(TAG, "Could not parse congestion event=" + eventStr);
-                }
-            }
+            return;
         }
 
         @Override
@@ -240,8 +212,7 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
      * @param command Driver Command
      * @return status
      */
-    public String doDriverCmd(String iface, String command)
-    {
+    public String doDriverCmd(String iface, String command) {
         synchronized (mLock) {
             final String methodStr = "doDriverCmd";
             final Mutable<String> reply = new Mutable<>();
