@@ -21,7 +21,6 @@ import java.util.HashSet;
 
 
 import com.qualcomm.qti.server.wifiextend.util.GeneralUtil.Mutable;
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,44 +41,16 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
     private Set<String> mActiveInterfaces = new HashSet<>();
-    private QtiWifiHalListener mWifiHalListener;
 
     // hostapd AIDL interface objects
     private IHostapdVendor mIHostapdVendor = null;
     private HostapdDeathRecipient mHostapdVendorDeathRecipient;
 
-    /**
-     * Register Hal listener for vendor events
-     */
-    public void registerWifiHalListener(QtiWifiHalListener listener) {
-        mWifiHalListener = listener;
-    }
-
     private class HostapdVendorCallback extends IHostapdVendorCallback.Stub {
         @Override
         public void onCtrlEvent(String ifaceName, String eventStr) {
             Log.i(TAG, ifaceName + ": " + eventStr);
-            if (eventStr == null) return;
-            if (mWifiHalListener == null) return;
-
-            // CTRL-EVENT-THERMAL-CHANGED level=3
-            if (eventStr.startsWith(QtiWifiExtendServiceImpl.THERMAL_EVENT_STR)) {
-                    Matcher match = QtiWifiExtendServiceImpl.THERMAL_PATTERN.matcher(eventStr);
-                if (match.find()) {
-                    int level = Integer.parseInt(match.group(1));
-                    mWifiHalListener.onThermalChanged(ifaceName, level);
-                } else {
-                    Log.e(TAG, "Could not parse themal event=" + eventStr);
-                }
-            } else if (eventStr.startsWith(QtiWifiExtendServiceImpl.CONGESTION_EVENT_STR)) {
-                    Matcher match = QtiWifiExtendServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
-                if (match.find()) {
-                    int level = Integer.parseInt(match.group(1));
-                    mWifiHalListener.onCongestionChanged(ifaceName, level);
-                } else {
-                    Log.e(TAG, "Could not parse congestion event=" + eventStr);
-                }
-            }
+            return;
         }
 
         @Override

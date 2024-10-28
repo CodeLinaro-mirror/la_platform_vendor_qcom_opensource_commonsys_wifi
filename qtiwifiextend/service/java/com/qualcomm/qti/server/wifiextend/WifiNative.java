@@ -26,10 +26,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.regex.Pattern;
 
+import android.os.Binder;
+import android.content.Context;
 import android.annotation.NonNull;
 import android.net.wifi.WifiManager;
 import android.os.WorkSource;
+import android.os.RemoteException;
+import android.os.RemoteCallbackList;
 import android.util.Log;
 
 import com.qualcomm.qti.server.wifiextend.WifiChip.WifiAvailableChannel;
@@ -37,33 +42,51 @@ import com.qualcomm.qti.wifiextend.CoexUnsafeChannel;
 import com.qualcomm.qti.wifiextend.MacAddress;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 import com.qualcomm.qti.wifiextend.QtiWifiExtendManager;
+import com.qualcomm.qti.wifiextend.IVendorEventCallback;
+import com.qualcomm.qti.wifiextend.WifiClient;
+import com.qualcomm.qti.wifiextend.ThermalData;
 
 public class WifiNative {
     private static final String TAG = "ExtendWifiNative";
+    private final Context mContext;
     private final WifiHal mWifiHal;
     private final HostapdHal mHostapdHal;
-    QtiHostapdHal mQtiHostapdHal;
+    private QtiHostapdHal mQtiHostapdHal;
+    private QtiWifiHal mQtiWifiHal;
     private final QtiWifiExtendThreadRunner mEventHandler;
     private final Object mLock = new Object();
     public static final int START_HAL_RETRY_TIMES = 3;
     private static final int START_HAL_RETRY_INTERVAL_MS = 20;
-    WifiChip mWifiChip = null;
+    private WifiChip mWifiChip = null;
     private final WifiHal.Callback mWifiEventCallback;
-	private final WifiChipEventCallback mWifiChipEventCallback;
+    private final WifiChipEventCallback mWifiChipEventCallback;
+	private QtiWifiHalInternalDeathRecipient mQtiWifiHalInternalDeathRecipient;
     private WifiDeathRecipient mIWifiDeathRecipient;
     private HashMap<String, WifiApIface> mWifiApIfaces = new HashMap<>();
     private boolean mIsQtiHostapdHalInitialized = false;
     private final List<CoexUnsafeChannel> mCurrentCoexUnsafeChannels = new ArrayList<>();
+    private HashSet<StatusListener> mStatusListeners = new HashSet<>();
 
-    public WifiNative(WifiHal wifihal,
+    private QtiWifiHal.QtiWifiHalListener mQtiHalListener;
+    private boolean mIsQtiWifiHalInitialized = false;
+
+    /* Vendor callbacks */
+    private final RemoteCallbackList<IVendorEventCallback> mVendorEventCallbacks = new RemoteCallbackList<>();;
+    private final HashMap<Integer, IVendorEventCallback> mVendorEventCallbacksMap = new HashMap<>();
+
+    public WifiNative(Context context,
+                   WifiHal wifihal,
                    HostapdHal hostapdHal,
                    QtiWifiExtendThreadRunner handler) {
+            mContext = context;
             mWifiHal = wifihal;
             mHostapdHal = hostapdHal;
             mEventHandler = handler;
             mWifiEventCallback = new WifiEventCallback();
             mWifiChipEventCallback = new WifiChipEventCallback();
             mIWifiDeathRecipient = new WifiDeathRecipient();
+            mQtiWifiHalInternalDeathRecipient = new QtiWifiHalInternalDeathRecipient();
+            mQtiHalListener = new QtiWifiHalListenerImpl();
     }
 
     /**
@@ -140,9 +163,79 @@ public class WifiNative {
         void onDown(String ifaceName);
     }
 
+    /**
+     * Callback to notify when the status of one of the native daemons
+     * (wificond, wpa_supplicant & vendor HAL) changes.
+     */
+    public interface StatusListener {
+        /**
+         * @param allReady Indicates if all the native daemons are ready for operation or not.
+         */
+        void onStatusChanged(boolean allReady);
+    }
+
+    private class QtiWifiHalListenerImpl implements QtiWifiHal.QtiWifiHalListener {
+        int mLastThermalLevel = ThermalData.THERMAL_INFO_LEVEL_UNKNOWN;
+
+        @Override
+        public void onThermalChanged(String ifname, int level) {
+            synchronized (mVendorEventCallbacks) {
+                level = toFrameworkThermalLevel(level);
+                // Reduce duplicate Thermal change event report.
+                if (level == mLastThermalLevel) {
+                    Log.d(TAG, "ignore duplicate report thermal with same level " + level);
+                    return;
+                }
+                mLastThermalLevel = level;
+                // Trigger callbacks
+                int itemCount = mVendorEventCallbacks.beginBroadcast();
+                for (int i = 0; i < itemCount; ++i) {
+                    try {
+                        mVendorEventCallbacks.getBroadcastItem(i).onThermalChanged(ifname, level);
+                    } catch (Exception e) {
+                        Log.e(TAG, "onThermalChanged error.");
+                    }
+                }
+                mVendorEventCallbacks.finishBroadcast();
+            }
+        }
+
+        @Override
+        public void onCongestionChanged(String ifname, int percentage) {
+            synchronized (mVendorEventCallbacks) {
+                // Trigger callbacks
+                int itemCount = mVendorEventCallbacks.beginBroadcast();
+                for (int i = 0; i < itemCount; ++i) {
+                    try {
+                        mVendorEventCallbacks.getBroadcastItem(i).onCongestionChanged(
+                                ifname, percentage);
+                    } catch (Exception e) {
+                        Log.e(TAG, "onCongestionChanged error.");
+                    }
+                }
+                mVendorEventCallbacks.finishBroadcast();
+            }
+        }
+    }
+
+    /**
+     * Register a StatusListener to get notified about any status changes from the native daemons.
+     *
+     * It is safe to re-register the same callback object - duplicates are detected and only a
+     * single copy kept.
+     *
+     * @param listener StatusListener listener object.
+     */
+    public void registerStatusListener(@NonNull StatusListener listener) {
+        synchronized (mLock) {
+            mStatusListeners.add(listener);
+        }
+    }
+
     public boolean initialize() {
         synchronized (mLock) {
             wifiHalInitializeInternal();
+            checkAndInitQtiWifiHal();
             return true;
         }
     }
@@ -267,13 +360,249 @@ public class WifiNative {
         }
     }
 
+    private class QtiWifiHalInternalDeathRecipient implements QtiWifiHal.InternalDeathRecipient {
+        @Override
+        public void onDeath() {
+            mEventHandler.run(() -> {
+                Log.i(TAG, "ExtendQtiWifi HAL service died");
+                synchronized (mLock) { // prevents race condition with surrounding method
+                    mIsQtiWifiHalInitialized = false;
+                    onNativeDaemonDeath();
+                }
+            });
+        }
+    }
+
+    public void checkAndInitQtiWifiHal() {
+        Log.i(TAG, "checkAndInitQtiWifiHal");
+        mQtiWifiHal = new QtiWifiHal();
+        mQtiWifiHal.initialize(mQtiWifiHalInternalDeathRecipient);
+        mQtiWifiHal.registerWifiHalListener(mQtiHalListener);
+        mIsQtiWifiHalInitialized = true;
+    }
+
+    public ThermalData getThermalInfo(String ifname) {
+        if (mIsQtiWifiHalInitialized == false) {
+            Log.e(TAG, "QtiWifiHal is not initialzied");
+            return null;
+        }
+
+        final String kGetThermalCmd = "DRIVER GET_THERMAL_INFO";
+        enforceAccessPermission();
+        String reply;
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kGetThermalCmd), null);
+
+        int[] info = new int[2];
+        try {
+            if (reply == null) {
+                Log.e(TAG, "timeout to get thermal info");
+                return null;
+            } else {
+                String[] infoString = reply.split("\\s+");
+                info[0] = Integer.parseInt(infoString[0]);
+                info[1] = Integer.parseInt(infoString[1]);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "invalid result for get thermal info");
+            return null;
+        }
+        ThermalData thermalData = new ThermalData();
+        thermalData.setTemperature(info[0]);
+        thermalData.setThermalLevel(toFrameworkThermalLevel(info[1]));
+        return thermalData;
+    }
+
+    /**
+     * Set TX power limitation in dBm.
+     *
+     * @param ifname Name of the interface.
+     * @param dbm    TX power in dBm.
+     * @return Results of setTxPower.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setTxPower(String ifname, int dbm) {
+        if (mIsQtiWifiHalInitialized == false) {
+            Log.e(TAG, "QtiWifiHal is not initialzied");
+            return false;
+        }
+
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        // vendor requirement to limit max tx power >= 8dBm.
+        if (dbm < 8) {
+            Log.e(TAG, "Expecting max tx power limit >= 8 dBm, while actual dBm=" + dbm);
+            return false;
+        }
+
+        final String kSetTxPowerCmd = "DRIVER SET_TXPOWER " + dbm;
+        String reply;
+
+        Log.v(TAG, "setTxPower: ifname=" + ifname + " TX power=" + dbm);
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetTxPowerCmd), null);
+
+        return setSuccess(reply);
+    }
+
+    /**
+     * Set ANI level.
+     *
+     * @param ifname  Name of the interface.
+     * @param mode    ani level mode(0: auto, 1: fixed, else: auto).
+     * @param ofdmlvl ANI level.
+     * @return result of setAni.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setAni(String ifname, int mode, int ofdmlvl) {
+        if (mIsQtiWifiHalInitialized == false) {
+            Log.e(TAG, "QtiWifiHal is not initialzied");
+            return false;
+        }
+
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        // we're not checking ofdmlvl here and mode is treated as 0 in hal layer if not
+        // 1.
+        final String kSetAniCmd = "DRIVER SET_ANI_LEVEL " + mode + " " + ofdmlvl;
+        String reply;
+
+        Log.v(TAG, "setAni: ifname=" + ifname + " mode=" + mode + " level=" + ofdmlvl);
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetAniCmd), null);
+
+        return setSuccess(reply);
+    }
+
+    /**
+     * Set Congestion report parameters.
+     *
+     * @param ifname Name of the interface.
+     * @param enable ani level mode(0: auto, 1: fixed, else: auto).
+     * @param thre   Only when congestion achieved the threshold need to report.
+     * @param inter  Interval to report congestion.
+     * @return result of setCongestionReport.
+     *
+     * @throws IllegalArgumentException if ifname is null.
+     */
+    public boolean setCongestionReport(String ifname, int enable, int thre, int inter) {
+        if (mIsQtiWifiHalInitialized == false) {
+            Log.e(TAG, "QtiWifiHal is not initialzied");
+            return false;
+        }
+
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        final String kSetCongestionReportCmd = "DRIVER SET_CONGESTION_REPORT "
+                + enable + " " + thre + " " + inter;
+        String reply;
+        // threshold and interval limitation are checked in hal layer
+        Log.v(TAG, "setCongestionReport: ifname=" + ifname + " enable=" + enable
+                + " threshold=" + thre + " interval=" + inter);
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetCongestionReportCmd), null);
+
+        return setSuccess(reply);
+    }
+
+    public String getClientIpAddress(WifiClient client) {
+        if (client == null) {
+            throw new IllegalArgumentException("WifiClient cannot be null");
+        }
+
+        String ifname = client.getApInstanceIdentifier();
+        String macaddr = client.getMacAddress().toString();
+        String kGetClientIpAddressCmd = "DRIVER GET_CLIENT_IP_ADDRESS " + macaddr;
+        String reply;
+        Log.v(TAG, "getClientIpAddress: ifname = " + ifname + " macAddr = " + macaddr);
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kGetClientIpAddressCmd), null);
+        return reply;
+    }
+
+    public boolean setDataSharing(String ifname, boolean enable) {
+        if (mIsQtiWifiHalInitialized == false) {
+            Log.e(TAG, "QtiWifiHal is not initialzied");
+            return false;
+        }
+
+        String kSetDataSharingCmd = "DRIVER SET_DATA_SHARING " + enable;
+        String reply;
+        Log.v(TAG, "setDataSharing: ifname = " + ifname + " enable = " + enable);
+        reply = mEventHandler.call(
+                () -> mQtiWifiHal.doQtiWifiCmd(ifname, kSetDataSharingCmd), null);
+        return setSuccess(reply);
+    }
+
+    public void registerVendorEventCallback(IVendorEventCallback callback,
+            int callbackIdentifier) {
+        // verify arguments
+        if (callback == null) {
+            throw new IllegalArgumentException("Callback must not be null");
+        }
+        enforceAccessPermission();
+        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
+        synchronized (mVendorEventCallbacks) {
+            mVendorEventCallbacks.register(callback);
+            mVendorEventCallbacksMap.put(callbackIdentifier, callback);
+        }
+    }
+
+    public void unregisterVendorEventCallback(int callbackIdentifier) {
+        Log.i(TAG, "registerVendorEventCallback uid=%" + Binder.getCallingUid());
+        enforceAccessPermission();
+        synchronized (mVendorEventCallbacks) {
+            IVendorEventCallback callback = mVendorEventCallbacksMap.get(callbackIdentifier);
+            if (callback == null) {
+                Log.d(TAG, "no such registered callback found, id=" + callbackIdentifier);
+                return;
+            }
+            mVendorEventCallbacks.unregister(callback);
+            mVendorEventCallbacksMap.remove(callbackIdentifier);
+        }
+    }
+
+    private int toFrameworkThermalLevel(int original_val) {
+        switch (original_val) {
+            case 0:
+                return ThermalData.THERMAL_INFO_LEVEL_FULL_PERF;
+            case 2:
+                return ThermalData.THERMAL_INFO_LEVEL_REDUCED_PERF;
+            case 4:
+                return ThermalData.THERMAL_INFO_LEVEL_TX_OFF;
+            case 5:
+                return ThermalData.THERMAL_INFO_LEVEL_SHUT_DOWN;
+        }
+        return ThermalData.THERMAL_INFO_LEVEL_UNKNOWN;
+    }
+
+    private boolean setSuccess(String reply) {
+        if (reply != null && reply.contains("OK")) {
+            return true;
+        }
+        return false;
+    }
+
+    private void enforceAccessPermission() {
+        mContext.enforceCallingOrSelfPermission(
+            android.Manifest.permission.ACCESS_WIFI_STATE, TAG);
+    }
+
     public void checkAndInitHostapdVendorHal() {
         Log.i(TAG, "checkAndInitHostapdVendorHal");
         mQtiHostapdHal = new QtiHostapdHal();
         mQtiHostapdHal.initialize();
-	//Thermal and congestion report callback are registered into qtiwifi HAL
-        mQtiHostapdHal.registerWifiHalListener(null);
-	mIsQtiHostapdHalInitialized = true;
+        //Thermal and congestion report callback are registered into qtiwifi HAL
+        //mQtiHostapdHal.registerWifiHalListener(null);
+        mIsQtiHostapdHalInitialized = true;
     }
 
     public String[] listHostapdVendorInterfaces() {
@@ -341,7 +670,6 @@ public class WifiNative {
        stopHostapd(ifaceName);
        stopWifiHal();
        mWifiApIfaces.remove(ifaceName);
-       mIsQtiHostapdHalInitialized = false;
     }
 
     public void stopHostapd(@NonNull String ifaceName) {
@@ -393,6 +721,22 @@ public class WifiNative {
     }
 
     /**
+     * Helper method invoked to trigger the status changed callback after one of the native
+     * daemon's death.
+     */
+    private void onNativeDaemonDeath() {
+        synchronized (mLock) {
+            for (StatusListener listener : mStatusListeners) {
+                listener.onStatusChanged(false);
+				Log.i(TAG, "native daemons died, trigger listener callback.");
+            }
+            for (StatusListener listener : mStatusListeners) {
+                listener.onStatusChanged(true);
+            }
+        }
+    }
+
+    /**
      * Death handler for the hostapd daemon.
      */
     private class HostapdDeathHandlerInternal implements HostapdDeathEventHandler {
@@ -400,7 +744,8 @@ public class WifiNative {
         public void onDeath() {
             synchronized (mLock) {
                 Log.i(TAG, "hostapd died. Cleaning up internal state.");
-          //      onNativeDaemonDeath();
+                mIsQtiHostapdHalInitialized = false;
+                onNativeDaemonDeath();
             }
         }
     }
@@ -496,8 +841,9 @@ public class WifiNative {
             mEventHandler.run(() -> {
                 Log.i(TAG, "extend Wifi HAL service died");
                 synchronized (mLock) { // prevents race condition with surrounding method
-                    //teardownInternal();
-                    //stopWifiHal();
+                onNativeDaemonDeath();
+                //teardownInternal();
+                //stopWifiHal();
                 }
             });
         }

@@ -925,13 +925,14 @@ public class SoftApManager implements ActiveModeManager {
                                 }
                             }
                         Log.w(getTag(), "hostapd failure, stop and report failure");
+                        break;
                         /* fall through */
                     //case CMD_UPDATE_CAPABILITY:
                         //SoftApCapability capability = (SoftApCapability) message.obj;
                         //mCurrentSoftApCapability = new SoftApCapability(capability);
                         //updateClientConnection();
                         //updateSafeChannelFrequencyList();
-                    //    break;
+                        //break;
                     case CMD_UPDATE_CONFIG:
                         SoftApConfiguration newConfig = (SoftApConfiguration) message.obj;
                         SoftApConfiguration originalConfig =

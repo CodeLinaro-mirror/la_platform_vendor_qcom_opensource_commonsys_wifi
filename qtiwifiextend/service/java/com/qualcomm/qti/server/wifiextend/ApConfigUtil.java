@@ -203,6 +203,12 @@ public class ApConfigUtil {
      * @param context the caller context used to get value from resource file.
      * @return true if supported, false otherwise.
      * Depends on chip's capability, set false by default
+     * Consider wifi module on CEM support 80211be, should to set true
+     * But QtiWifiExtendService don't enable MLO on single band AP
+     * and disable MLO on bridged AP. If set true here,  bridged AP will
+     * fail to start.
+     * To do: add MLO logical, enable MLO for single band AP and
+     * disable MLO for bridged AP.
      */
     public static boolean isIeee80211beSupported(Context context) {
         return false;
