@@ -1,0 +1,23 @@
+//=============================================
+//  QtiWifiExtend Manager
+//=============================================
+java_library {
+    name: "qtiwifi_extend_manager",
+    srcs: [
+        "java/**/*.java",
+        "java/**/*.aidl",
+    ],
+    aidl: {
+        local_include_dirs: ["java"],
+    },
+    optimize: {
+        enabled: false,
+    },
+    platform_apis: true,
+    sdk_version: "current",
+    installable: true,
+    dist: {
+        targets: ["dist_files"],
+        dest: "qtiwifi_extend_manager",
+    }
+}

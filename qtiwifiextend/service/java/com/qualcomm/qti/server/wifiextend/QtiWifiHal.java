@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
-package com.qualcomm.qti.server.qtiwifi;
+package com.qualcomm.qti.server.wifiextend;
 
 import vendor.qti.hardware.wifi.qtiwifi.IQtiWifi;
 import vendor.qti.hardware.wifi.qtiwifi.IQtiWifiCallback;
@@ -19,8 +19,8 @@ import android.os.ServiceManager;
 import android.os.ServiceSpecificException;
 import android.util.Log;
 
-import com.qualcomm.qti.server.qtiwifi.util.GeneralUtil.Mutable;
-import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
+import com.qualcomm.qti.server.wifiextend.util.GeneralUtil.Mutable;
+import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,8 +30,8 @@ import java.util.HashSet;
  * HAL calls to set up the qtiwifi daemon. Uses the AIDL qtiwifi interface.
  */
 public class QtiWifiHal {
-    private static final String TAG = "QtiWifiHal";
-    private static final String HAL_INSTANCE_NAME = IQtiWifi.DESCRIPTOR + "/default";
+    private static final String TAG = "ExtendQtiWifiHal";
+    private static final String HAL_INSTANCE_NAME = IQtiWifi.DESCRIPTOR + "/cem";
 
     private static final int MIN_PORT_NUM = 0;
     private static final int MAX_PORT_NUM = 65535;
@@ -41,7 +41,7 @@ public class QtiWifiHal {
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
     private Set<IfaceInfo> mActiveInterfaces = new HashSet<>();
-    private WifiHalListener mWifiHalListener;
+    private QtiWifiHalListener mWifiHalListener;
 
     // qtiwifi AIDL interface objects
     private IQtiWifi mIQtiWifi = null;
@@ -50,7 +50,7 @@ public class QtiWifiHal {
     /**
      * Register Hal listener for vendor events
      */
-    public void registerWifiHalListener(WifiHalListener listener) {
+    public void registerWifiHalListener(QtiWifiHalListener listener) {
         mWifiHalListener = listener;
     }
 
@@ -65,8 +65,8 @@ public class QtiWifiHal {
             }
 
             // CTRL-EVENT-THERMAL-CHANGED level=3
-            if (eventStr.startsWith(QtiWifiServiceImpl.THERMAL_EVENT_STR)) {
-                    Matcher match = QtiWifiServiceImpl.THERMAL_PATTERN.matcher(eventStr);
+            if (eventStr.startsWith(QtiWifiExtendServiceImpl.THERMAL_EVENT_STR)) {
+                    Matcher match = QtiWifiExtendServiceImpl.THERMAL_PATTERN.matcher(eventStr);
                 if (match.find()) {
                     int level = Integer.parseInt(match.group(1));
                     mWifiHalListener.onThermalChanged(ifaceName, level);
@@ -74,8 +74,8 @@ public class QtiWifiHal {
                     Log.e(TAG, "Could not parse thermal event=" + eventStr);
                 }
             // CTRL-EVENT-CONGESTION-REPORT percentage=3
-            } else if (eventStr.startsWith(QtiWifiServiceImpl.CONGESTION_EVENT_STR)) {
-                    Matcher match = QtiWifiServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
+            } else if (eventStr.startsWith(QtiWifiExtendServiceImpl.CONGESTION_EVENT_STR)) {
+                    Matcher match = QtiWifiExtendServiceImpl.CONGESTION_PATTERN.matcher(eventStr);
                 if (match.find()) {
                     int percent = Integer.parseInt(match.group(1));
                     mWifiHalListener.onCongestionChanged(ifaceName, percent);

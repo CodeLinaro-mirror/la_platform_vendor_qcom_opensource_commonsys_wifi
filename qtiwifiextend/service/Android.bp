@@ -1,0 +1,82 @@
+//=============================================
+//  QtiWifiExtend Service APK
+//=============================================
+
+android_app {
+    name: "QtiWifiExtendService",
+
+    platform_apis: true,
+
+    srcs: ["java/com/qualcomm/qti/server/wifiextend/QtiWifiExtendService.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiWifiExtendInjector.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiWifiExtendServiceImpl.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiWifiExtendThreadRunner.java",
+           "java/com/qualcomm/qti/server/wifiextend/HostapdHal.java",
+           "java/com/qualcomm/qti/server/wifiextend/HostapdHalAidlImp.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiHostapdHal.java",
+           "java/com/qualcomm/qti/server/wifiextend/IQtiHostapdHal.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiHostapdHalAidlImpl.java",
+           "java/com/qualcomm/qti/server/wifiextend/QtiWifiHal.java",
+           "java/com/qualcomm/qti/server/wifiextend/ActiveModeManager.java",
+           "java/com/qualcomm/qti/server/wifiextend/ActiveModeWarden.java",
+           "java/com/qualcomm/qti/server/wifiextend/ApConfigUtil.java",
+           "java/com/qualcomm/qti/server/wifiextend/RunnerState.java",
+           "java/com/qualcomm/qti/server/wifiextend/SoftApConfigStore.java",
+           "java/com/qualcomm/qti/server/wifiextend/SoftApManager.java",
+           "java/com/qualcomm/qti/server/wifiextend/SoftApModeConfiguration.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiApIface.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiApIfaceAidlImpl.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiChip.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiChipAidlImpl.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiCountryCode.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiHal.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiHalAidlImpl.java",
+           "java/com/qualcomm/qti/server/wifiextend/WifiNative.java",
+           "java/com/qualcomm/qti/server/wifiextend/util/GeneralUtil.java",
+          ],
+    resource_dirs: ["res"],
+
+    libs: [
+           "statemachine-to-app",
+           "qtiwifi_extend_manager",
+           // AIDL vendor hal implementation
+           "android.hardware.wifi-V1-java",
+           // AIDL hostapd implementation
+           "android.hardware.wifi.hostapd-V1-java",
+           "vendor.qti.hardware.wifi.hostapd-V1-java",
+           "vendor.qti.hardware.wifi.qtiwifi-V1-java",
+    ],
+
+    static_libs: [
+                  "android-support-v13",
+    ],
+
+    uses_libs: [
+           "statemachine-to-app",
+           "qtiwifi_extend_manager",
+           // AIDL vendor hal implementation
+           "android.hardware.wifi-V1-java",
+           // AIDL hostapd implementation
+           "android.hardware.wifi.hostapd-V1-java",
+           "vendor.qti.hardware.wifi.hostapd-V1-java",
+           "vendor.qti.hardware.wifi.qtiwifi-V1-java",
+    ],
+
+    certificate: "platform",
+
+    privileged: true,
+
+    system_ext_specific: true,
+
+}
+
+prebuilt_etc {
+    name: "qti_hostapd_interface.xml",
+
+    //this will install the file in /system_ext/etc/permissions
+
+    src: "qti_hostapd_interface.xml",
+    sub_dir: "permissions",
+    system_ext_specific: true,
+
+}
