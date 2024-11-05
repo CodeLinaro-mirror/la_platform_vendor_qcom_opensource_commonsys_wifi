@@ -166,7 +166,7 @@ public class QtiWifiHal {
         }
 
         mIQtiWifi = getQtiWifiMockable();
-        if (!checkQtiWifiAndLogFailure(methodStr)) {
+        if (mIQtiWifi == null) {
             return false;
         }
 
@@ -200,8 +200,12 @@ public class QtiWifiHal {
     private boolean checkQtiWifiAndLogFailure(final String methodStr) {
         synchronized (mLock) {
             if (mIQtiWifi == null) {
-                Log.e(TAG, "Can't call " + methodStr + ", IQtiWifi is null");
-                return false;
+                Log.d(TAG, "Can't call " + methodStr + ", IQtiWifi is null"
+                       + ", try to getQtiWifiInstance again");
+                if (!getQtiWifiInstance()) {
+                    Log.e(TAG, "getQtiWifiInstance failed");
+                    return false;
+                }
             }
             return true;
         }
