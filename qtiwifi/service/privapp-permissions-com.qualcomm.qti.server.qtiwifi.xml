@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+    Copyright (c) 2024 Qualcomm Innovation Center, Inc. All rights reserved.
+    SPDX-License-Identifier: BSD-3-Clause-Clear
+-->
+
+<permissions>
+    <privapp-permissions package="com.qualcomm.qti.server.qtiwifi">
+        <permission name="android.permission.OVERRIDE_WIFI_CONFIG"/>
+    </privapp-permissions>
+</permissions>
