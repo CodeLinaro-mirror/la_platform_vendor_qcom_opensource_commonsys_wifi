@@ -8,6 +8,7 @@ PRODUCT_PACKAGES += android.hardware.wifi.supplicant-V1.3-java
 PRODUCT_PACKAGES += android.hidl.base-V1.0-java
 PRODUCT_PACKAGES += android.hidl.manager-V1.0-java
 PRODUCT_PACKAGES += qti_supplicant_interface.xml
+PRODUCT_PACKAGES += privapp-permissions-com.qualcomm.qti.server.qtiwifi.xml
 ifneq (,$(filter userdebug eng, $(TARGET_BUILD_VARIANT)))
 PRODUCT_PACKAGES += QtiWifiSettingsApp
 endif # userdebug | eng
