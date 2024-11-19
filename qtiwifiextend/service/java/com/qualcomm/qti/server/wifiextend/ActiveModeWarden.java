@@ -187,7 +187,7 @@ public class ActiveModeWarden {
 
     private class WifiController extends StateMachine {
 
-        private static final String TAG = "ExtendWifiController";
+        private static final String TAG = "WifiController";
 
         // Maximum limit to use for timeout delay if the value from overlay setting is too large.
         private static final int MAX_RECOVERY_TIMEOUT_DELAY_MS = 4000;

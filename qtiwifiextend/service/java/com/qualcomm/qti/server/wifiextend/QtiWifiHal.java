@@ -24,14 +24,13 @@ import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalLis
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.HashSet;
 
 /**
  * HAL calls to set up the qtiwifi daemon. Uses the AIDL qtiwifi interface.
  */
 public class QtiWifiHal {
     private static final String TAG = "ExtendQtiWifiHal";
-    private static final String HAL_INSTANCE_NAME = IQtiWifi.DESCRIPTOR + "/cem";
+    private static final String HAL_INSTANCE_NAME = IQtiWifi.DESCRIPTOR + "/default";
 
     private static final int MIN_PORT_NUM = 0;
     private static final int MAX_PORT_NUM = 65535;
@@ -40,7 +39,7 @@ public class QtiWifiHal {
     private boolean mVerboseLoggingEnabled = false;
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
-    private Set<IfaceInfo> mActiveInterfaces = new HashSet<>();
+    private Set<IfaceInfo> mActiveInterfaces;
     private QtiWifiHalListener mWifiHalListener;
 
     // qtiwifi AIDL interface objects

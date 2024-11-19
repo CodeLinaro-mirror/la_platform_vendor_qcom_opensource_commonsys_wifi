@@ -38,8 +38,10 @@ public class QtiWifiExtendInjector {
     private static final String TAG = "ExtendWifiInjector";
 
     private HandlerThread mHandlerThread;
+    //private Handler mHandler;
     private QtiWifiExtendThreadRunner mQtiWifiThreadRunner;
     private LocalLog mWifiHandlerLocalLog;
+
 
     SoftApConfigStore mSoftApConfigStore;
     WifiCountryCode mWifiCountryCode;
@@ -50,6 +52,7 @@ public class QtiWifiExtendInjector {
     WifiHal mWifihal;
     HostapdHal mHostapdHal;
     QtiWifiHal mQtiWifiHal;
+    QtiHostapdHal mQtiHostapdHal;
     Looper wifiLooper;
     Handler wifiHandler;
 
@@ -61,13 +64,14 @@ public class QtiWifiExtendInjector {
         mQtiWifiThreadRunner = new QtiWifiExtendThreadRunner(new Handler(wifiLooper));
 
         mWifiHandlerLocalLog = new LocalLog(1024);
-        mSoftApConfigStore = new SoftApConfigStore(context);
+        mSoftApConfigStore = new SoftApConfigStore();
         mWifiCountryCode = new WifiCountryCode(mSoftApConfigStore);
 
         mQtiWifiHal = new QtiWifiHal();
+        mQtiHostapdHal = new QtiHostapdHal();
         mWifihal = new WifiHal(context);
         mHostapdHal = new HostapdHal(context, mQtiWifiThreadRunner);
-        mWifiNative = new WifiNative(mWifihal, mHostapdHal, mQtiWifiThreadRunner);
+        mWifiNative = new WifiNative(mWifihal, mHostapdHal, mQtiHostapdHal, mQtiWifiThreadRunner);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper, mWifiNative);
 
     }
@@ -109,6 +113,10 @@ public class QtiWifiExtendInjector {
 
     public QtiWifiHal getQtiWifiHal() {
         return mQtiWifiHal;
+    }
+
+    public QtiHostapdHal getQtiHostapdHal() {
+        return mQtiHostapdHal;
     }
 
     public ActiveModeWarden getActiveModeWarden() {

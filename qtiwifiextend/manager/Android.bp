@@ -15,7 +15,6 @@ java_library {
     },
     platform_apis: true,
     sdk_version: "current",
-    installable: true,
     dist: {
         targets: ["dist_files"],
         dest: "qtiwifi_extend_manager",

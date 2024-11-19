@@ -56,11 +56,10 @@ import android.util.Log;
 public class SoftApConfigStore {
     private static final String TAG = "ExtendSoftApConfigStore";
 
-    private String filePath;
-    private String softApConfigFileStr;
-    private String countryCodeFileStr;
-    private static final String softApConfigFileName = "ExtendSoftApConfig.properties";
-    private static final String countryCodeFileName = "ExtendSoftApCountryCode.properties";
+    private static final String softApConfigFileStr = "/data/misc/apexdata/com.android.wifi/ExtendSoftApConfig.properties";
+
+    private static final String countryCodeFileStr = "/data/misc/apexdata/com.android.wifi/ExtendSoftApCountryCode.properties";
+
     private static final String defaultSsid = "Android";
 
     private static final int RAND_SSID_INT_MIN = 1000;
@@ -76,13 +75,7 @@ public class SoftApConfigStore {
 
     private SoftApConfiguration mPersistentWifiApConfig;
 
-    private final Context mContext;
-
-    public SoftApConfigStore(Context context) {
-        mContext = context;
-        filePath = context.getFilesDir().getPath();
-        softApConfigFileStr = filePath + "/" + softApConfigFileName;
-        countryCodeFileStr = filePath + "/" + countryCodeFileName;
+    public SoftApConfigStore() {
         File apConfigFile = new File(softApConfigFileStr);
         if (apConfigFile.exists()) {
             mPersistentWifiApConfig = getSoftApConfigFromFile();
@@ -109,7 +102,6 @@ public class SoftApConfigStore {
     }
 
     private void saveCountryCodeIntoFile(String countryCode) {
-        Log.d(TAG, "save country code into file " + countryCodeFileStr);
         try {
             FileOutputStream fs = new FileOutputStream(countryCodeFileStr, false);
             Properties prop = new Properties();
@@ -123,7 +115,6 @@ public class SoftApConfigStore {
     }
 
     private String getCountryCodeFromFile() {
-        Log.d(TAG, "get country code from file " + countryCodeFileStr);
         try {
             FileInputStream fs = new FileInputStream(countryCodeFileStr);
             Properties prop = new Properties();
@@ -140,7 +131,7 @@ public class SoftApConfigStore {
     public synchronized SoftApConfiguration getSoftApConfiguration() {
         if (mPersistentWifiApConfig == null) {
             /* Use default configuration. */
-            Log.d(TAG, "ApConfig is null, use default AP configuration and save it into file");
+            Log.d(TAG, "Fallback to use default AP configuration");
             mPersistentWifiApConfig = updatePersistentRandomizedMacAddress(getDefaultApConfiguration());
             saveSoftApConfigIntoFile(mPersistentWifiApConfig);
         }
@@ -159,7 +150,6 @@ public class SoftApConfigStore {
     }
 
     private void saveSoftApConfigIntoFile(SoftApConfiguration softApConfig) {
-        Log.d(TAG, "save ApConfig into file " + softApConfigFileStr);
         try {
             FileOutputStream fs = new FileOutputStream(softApConfigFileStr, false);
             Properties prop = new Properties();
@@ -205,14 +195,12 @@ public class SoftApConfigStore {
     }
 
     private SoftApConfiguration getSoftApConfigFromFile() {
-        Log.d(TAG, "read ApConfig from file " + softApConfigFileStr);
         SoftApConfiguration.Builder softApConfigBuilder = new SoftApConfiguration.Builder();
         int securityType = SoftApConfiguration.SECURITY_TYPE_OPEN;
         String passphrase = null;
         String bssid = null;
         int[] channels = {-1 ,-1};
         int[] apBands = {-1, -1};
-	SparseIntArray channelsArray = new SparseIntArray();
         List<MacAddress> blockedList = new ArrayList<>();
         List<MacAddress> allowedList = new ArrayList<>();
         try {
@@ -292,11 +280,9 @@ public class SoftApConfigStore {
 
             for (int i = 0; i < channels.length; i++) {
                 if ((channels[i] != -1) && (apBands[i] != -1)) {
-		    channelsArray.put(apBands[i], channels[i]);
+                    softApConfigBuilder.setChannel(channels[i], apBands[i]);
                 }
             }
-            if ((channelsArray.size() == 1) ||(channelsArray.size() == 2))
-                softApConfigBuilder.setChannels(channelsArray);
 
             if (bssid != null) {
                 // Force MAC randomization setting to none when BSSID is configured
@@ -461,5 +447,4 @@ public class SoftApConfigStore {
         }
         return true;
     }
-
 }

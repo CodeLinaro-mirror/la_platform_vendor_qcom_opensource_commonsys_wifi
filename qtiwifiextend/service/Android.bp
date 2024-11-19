@@ -47,36 +47,12 @@ android_app {
            "vendor.qti.hardware.wifi.qtiwifi-V1-java",
     ],
 
-    static_libs: [
-                  "android-support-v13",
-    ],
-
-    uses_libs: [
-           "statemachine-to-app",
-           "qtiwifi_extend_manager",
-           // AIDL vendor hal implementation
-           "android.hardware.wifi-V1-java",
-           // AIDL hostapd implementation
-           "android.hardware.wifi.hostapd-V1-java",
-           "vendor.qti.hardware.wifi.hostapd-V1-java",
-           "vendor.qti.hardware.wifi.qtiwifi-V1-java",
-    ],
-
     certificate: "platform",
 
     privileged: true,
 
     system_ext_specific: true,
 
-}
-
-prebuilt_etc {
-    name: "qti_hostapd_interface.xml",
-
-    //this will install the file in /system_ext/etc/permissions
-
-    src: "qti_hostapd_interface.xml",
-    sub_dir: "permissions",
-    system_ext_specific: true,
+    enforce_uses_libs: false,
 
 }

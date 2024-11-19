@@ -202,10 +202,10 @@ public class ApConfigUtil {
      *
      * @param context the caller context used to get value from resource file.
      * @return true if supported, false otherwise.
-     * Depends on chip's capability, set false by default
+     * Since the target wifi chip is QCA6797, force to true
      */
     public static boolean isIeee80211beSupported(Context context) {
-        return false;
+        return true;
     }
 
     /**

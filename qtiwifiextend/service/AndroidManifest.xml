@@ -36,14 +36,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.qualcomm.qti.server.wifiextend">
 
-    <uses-sdk android:minSdkVersion="34" android:targetSdkVersion="34" />
+    <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="33" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL"/>
-    <uses-permission android:name="android.permission.BROADCAST_STICKY"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <application
         android:allowBackup="false"
         android:persistent="true"
@@ -51,24 +51,12 @@
         android:icon="@mipmap/icon"
         android:supportsRtl="true">
 
-        <uses-library android:name="statemachine-to-app" />
-
-        <uses-library android:name="qtiwifi_extend_manager" />
-
-        <uses-library android:name="android.hardware.wifi-V1-java"/>
-
-        <uses-library android:name="android.hardware.wifi.hostapd-V1-java"/>
-
-        <uses-library android:name="vendor.qti.hardware.wifi.hostapd-V1-java"/>
-
-        <uses-library android:name="vendor.qti.hardware.wifi.qtiwifi-V1-java"/>
-
         <!-- defining the service class here -->
-        <service android:name="com.qualcomm.qti.server.wifiextend.QtiWifiExtendService"
+        <service android:name="com.qualcomm.qti.server.wifiextend.WifiExtendService"
                  android:exported="true"
                  android:enabled="true">
             <intent-filter>
-                <action android:name="com.qualcomm.qti.server.wifiextend.QtiWifiExtendService"/>
+                <action android:name="com.qualcomm.qti.server.wifiextend.WifiExtendService"/>
             </intent-filter>
         </service>
     </application>
