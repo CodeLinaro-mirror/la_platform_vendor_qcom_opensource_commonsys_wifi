@@ -1,4 +1,19 @@
-/* Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc.
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Copyright (c) 2021-2022, 2024 Qualcomm Innovation Center, Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -31,30 +46,31 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.qualcomm.qti.qtiwifi;
-import com.qualcomm.qti.qtiwifi.ICsiCallback;
-import com.qualcomm.qti.qtiwifi.ThermalData;
-import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
-import com.qualcomm.qti.qtiwifi.CarPlayIEData;
+package com.qualcomm.qti.server.wifiextend.util;
 
-interface IQtiWifiManager
-{
-    void startCsi();
-    void stopCsi();
-    void registerCsiCallback(in IBinder binder, in ICsiCallback callback, int callbackIdentifier);
-    void unregisterCsiCallback(int callbackIdentifier);
-    List<String> getAvailableInterfaces();
-    void registerVendorEventCallback(in IVendorEventCallback callback, in int callbackIdentifier);
-    void unregisterVendorEventCallback(in int callbackIdentifier);
-    ThermalData getThermalInfo(String ifname);
-    boolean setTxPower(String ifname, int dbm);
-    boolean setAni(String ifname, int mode, int ofdmlvl);
-    boolean enableCarPlayIE(in CarPlayIEData carPlayIEData);
-    boolean disableCarPlayIE();
-    boolean setCongestionReport(String ifname, int enable, int threshold, int interval);
-    String[] listHostapdVendorInterfaces();
-    String[] listSupplicantVendorInterfaces();
-    String doHostapdDriverCmd(String ifname, String command);
-    String doSupplicantDriverCmd(String command);
-    String doHostapdCtrlIfaceCmd(String ifname, String command);
+
+/**
+ * Class for general helper methods and objects for Wifi Framework code.
+ * @hide
+ */
+public class GeneralUtil {
+
+    /**
+     * Class which can be used to fetch an object out of a lambda. Fetching an object
+     * out of a local scope with HIDL is a common operation (although usually it can
+     * and should be avoided).
+     *
+     * @param <E> Inner object type.
+     */
+    public static final class Mutable<E> {
+        public E value;
+
+        public Mutable() {
+            value = null;
+        }
+
+        public Mutable(E value) {
+            this.value = value;
+        }
+    }
 }
