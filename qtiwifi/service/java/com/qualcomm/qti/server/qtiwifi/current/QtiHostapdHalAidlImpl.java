@@ -23,6 +23,7 @@ import com.qualcomm.qti.server.qtiwifi.QtiWifiServiceImpl.WifiHalListener;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.HashSet;
 
 /**
  * HAL calls to set up/tear down the hostapd daemon and make requests
@@ -39,7 +40,7 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
     private boolean mVerboseLoggingEnabled = false;
     private boolean mServiceDeclared = false;
     private String mVendorIfaceName = null;
-    private Set<String> mActiveInterfaces;
+    private Set<String> mActiveInterfaces = new HashSet<>();
     private WifiHalListener mWifiHalListener;
 
     // hostapd AIDL interface objects

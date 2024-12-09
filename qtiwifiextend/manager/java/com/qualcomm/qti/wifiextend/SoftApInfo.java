@@ -25,7 +25,6 @@ package com.qualcomm.qti.wifiextend;
 import android.os.Parcel;
 import android.os.Parcelable;
 import java.util.Objects;
-import com.qualcomm.qti.wifiextend.MacAddress;
 
 public final class SoftApInfo implements Parcelable {
 

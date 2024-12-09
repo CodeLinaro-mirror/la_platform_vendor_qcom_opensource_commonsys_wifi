@@ -22,7 +22,6 @@
 
 package com.qualcomm.qti.server.wifiextend;
 
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 
 import android.content.Context;
@@ -38,21 +37,20 @@ public class QtiWifiExtendInjector {
     private static final String TAG = "ExtendWifiInjector";
 
     private HandlerThread mHandlerThread;
-    //private Handler mHandler;
     private QtiWifiExtendThreadRunner mQtiWifiThreadRunner;
     private LocalLog mWifiHandlerLocalLog;
-
 
     SoftApConfigStore mSoftApConfigStore;
     WifiCountryCode mWifiCountryCode;
     ActiveModeWarden mActiveModeWarden;
     WifiNative mWifiNative;
+    SelfRecovery mSelfRecovery;
+
     Context mContext;
 
     WifiHal mWifihal;
     HostapdHal mHostapdHal;
-    QtiWifiHal mQtiWifiHal;
-    QtiHostapdHal mQtiHostapdHal;
+
     Looper wifiLooper;
     Handler wifiHandler;
 
@@ -64,15 +62,14 @@ public class QtiWifiExtendInjector {
         mQtiWifiThreadRunner = new QtiWifiExtendThreadRunner(new Handler(wifiLooper));
 
         mWifiHandlerLocalLog = new LocalLog(1024);
-        mSoftApConfigStore = new SoftApConfigStore();
+        mSoftApConfigStore = new SoftApConfigStore(context);
         mWifiCountryCode = new WifiCountryCode(mSoftApConfigStore);
 
-        mQtiWifiHal = new QtiWifiHal();
-        mQtiHostapdHal = new QtiHostapdHal();
         mWifihal = new WifiHal(context);
         mHostapdHal = new HostapdHal(context, mQtiWifiThreadRunner);
-        mWifiNative = new WifiNative(mWifihal, mHostapdHal, mQtiHostapdHal, mQtiWifiThreadRunner);
+        mWifiNative = new WifiNative(context, mWifihal, mHostapdHal, mQtiWifiThreadRunner);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper, mWifiNative);
+        mSelfRecovery = new SelfRecovery(context, mActiveModeWarden, mWifiNative);
 
     }
 
@@ -111,15 +108,11 @@ public class QtiWifiExtendInjector {
         return mWifiHandlerLocalLog;
     }
 
-    public QtiWifiHal getQtiWifiHal() {
-        return mQtiWifiHal;
-    }
-
-    public QtiHostapdHal getQtiHostapdHal() {
-        return mQtiHostapdHal;
-    }
-
     public ActiveModeWarden getActiveModeWarden() {
         return mActiveModeWarden;
+    }
+
+    public SelfRecovery getSelfRecovery() {
+        return mSelfRecovery;
     }
 }

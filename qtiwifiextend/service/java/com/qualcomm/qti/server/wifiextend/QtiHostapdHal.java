@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2024 Qualcomm Innovation Center, Inc. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause-Clear
  *
  * Copyright (C) 2017 The Android Open Source Project
@@ -21,10 +21,8 @@ package com.qualcomm.qti.server.wifiextend;
 
 import android.util.Log;
 
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
-
 public class QtiHostapdHal {
-    private static final String TAG = "QtiHostapdHal";
+    private static final String TAG = "ExtendQtiHostapdHal";
 
     private final Object mLock = new Object();
     private boolean mVerboseLoggingEnabled = true;
@@ -36,7 +34,7 @@ public class QtiHostapdHal {
         Log.w(TAG, "constructor of QtiHostapdHal called");
         mQtiHostapdHal = createVendorHostapdHalMockable();
         if (mQtiHostapdHal == null) {
-            Log.w(TAG, "Failed to get internal ISupplicantVendorStaIfaceHal instance.");
+            Log.w(TAG, "Failed to get internal IHostapdVendorHal instance.");
         }
     }
 
@@ -49,11 +47,11 @@ public class QtiHostapdHal {
     public boolean initialize() {
         synchronized (mLock) {
             if (mQtiHostapdHal == null) {
-                Log.w(TAG, "Internal ISupplicantVendorStaIfaceHal instance does not exist.");
+                Log.w(TAG, "Internal IHostapdVendorHal instance does not exist.");
                 return false;
             }
             if (!mQtiHostapdHal.initialize()) {
-                Log.e(TAG, "Failed to init ISupplicantVendorStaIfaceHal, stopping startup.");
+                Log.e(TAG, "Failed to init IHostapdVendorHal, stopping startup.");
                 return false;
             }
             return true;
@@ -86,7 +84,7 @@ public class QtiHostapdHal {
         synchronized (mLock) {
             final String methodStr = "doDriverCmd";
             if (mQtiHostapdHal == null) {
-                return "QtiStaIfaceHal is null";
+                return "QtiHostapdHal is null";
             }
             return mQtiHostapdHal.doDriverCmd(iface, command);
         }
@@ -103,7 +101,7 @@ public class QtiHostapdHal {
         synchronized (mLock) {
             final String methodStr = "doCtrlIfaceCmd";
             if (mQtiHostapdHal == null) {
-                return "QtiStaIfaceHal is null";
+                return "QtiHostapdHal is null";
             }
             return mQtiHostapdHal.doCtrlIfaceCmd(iface, command);
         }
@@ -120,15 +118,6 @@ public class QtiHostapdHal {
                 return null;
             }
             return mQtiHostapdHal.listVendorInterfaces();
-        }
-    }
-
-    /**
-     * Register Hal listener for vendor events
-     */
-    public void registerWifiHalListener(QtiWifiHalListener listener) {
-        synchronized (mLock) {
-            mQtiHostapdHal.registerWifiHalListener(listener);
         }
     }
 

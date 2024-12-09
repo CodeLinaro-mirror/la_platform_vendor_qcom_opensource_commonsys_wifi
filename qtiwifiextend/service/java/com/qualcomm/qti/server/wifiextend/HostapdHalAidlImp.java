@@ -72,7 +72,7 @@ import com.qualcomm.qti.wifiextend.QtiWifiExtendManager;
 
 public class HostapdHalAidlImp implements IHostapdHal {
     private static final String TAG = "ExtendHostapdHalAidlImp";
-    private static final String HAL_INSTANCE_NAME = IHostapd.DESCRIPTOR + "/default";
+    private static final String HAL_INSTANCE_NAME = IHostapd.DESCRIPTOR + "/cem";
     public static final long WAIT_FOR_DEATH_TIMEOUT_MS = 50L;
 
     private final Object mLock = new Object();
@@ -660,24 +660,17 @@ public class HostapdHalAidlImp implements IHostapdHal {
         String oemConfig;
         switch (band) {
             case SoftApConfiguration.BAND_2GHZ:
-                //oemConfig = mContext.getResources().getString(
-                //        R.string.config_wifiSoftap2gChannelList);
+                oemConfig = null;
                 break;
             case SoftApConfiguration.BAND_5GHZ:
-                //oemConfig = mContext.getResources().getString(
-                //        R.string.config_wifiSoftap5gChannelList);
+                oemConfig = null;
                 break;
             case SoftApConfiguration.BAND_6GHZ:
-                //oemConfig = mContext.getResources().getString(
-                //        R.string.config_wifiSoftap6gChannelList);
+                oemConfig = null;
                 break;
             default:
                 return frequencyRanges;
         }
-        //Since this application doesn't support to read config from
-        //Resource configuration, need to fix the configuration in code
-        //directly.
-        oemConfig = null;
         allowedChannelList = ApConfigUtil.collectAllowedAcsChannels(band, oemConfig, new int[] {});
         if (allowedChannelList.isEmpty()) {
             Log.e(TAG, "Empty list of allowed channels");
@@ -823,8 +816,7 @@ public class HostapdHalAidlImp implements IHostapdHal {
             nwParams.ssid[i] = ssid.get(i);
         }
 
-        //config doesn't contain Vendor Elements,
-        //then nwParams also doesn't have vendorElements Info.
+        nwParams.vendorElements = new byte[0];
 
         nwParams.isMetered = isMetered;
         nwParams.isHidden = config.isHiddenSsid();
@@ -896,10 +888,10 @@ public class HostapdHalAidlImp implements IHostapdHal {
             channelParamsList[i].bandMask = getHalBandMask(band);
             channelParamsList[i].acsChannelFreqRangesMhz = new FrequencyRange[0];
             if (channelParamsList[i].enableAcs) {
-                //config_wifiSoftapAcsIncludeDfs is true
-                channelParamsList[i].acsShouldExcludeDfs = false;
+                //config_wifiSoftapAcsIncludeDfs is false
+                channelParamsList[i].acsShouldExcludeDfs = true;
                 //if (ApConfigUtil.isSendFreqRangesNeeded(band, mContext, config)) {
-                //    prepareAcsChannelFreqRangesMhz(channelParamsList[i], band, config);
+                prepareAcsChannelFreqRangesMhz(channelParamsList[i], band, config);
                 //}
             }
             if (channelParamsList[i].acsChannelFreqRangesMhz == null) {

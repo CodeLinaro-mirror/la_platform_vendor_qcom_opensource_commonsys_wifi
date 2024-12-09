@@ -42,7 +42,6 @@ import android.util.LocalLog;
 import android.util.Log;
 import android.util.Pair;
 
-
 import com.qualcomm.qti.server.wifiextend.statemachine.StateMachine;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 
@@ -70,6 +69,7 @@ public class ActiveModeWarden {
     private final Set<SoftApManager> mSoftApManagers = new ArraySet<>();
 
     private final Looper mLooper;
+    private final Handler mHandler;
 
     private WifiNative mWifiNative;
     private final WifiController mWifiController;
@@ -85,8 +85,25 @@ public class ActiveModeWarden {
     ActiveModeWarden(QtiWifiExtendInjector injector, Looper looper, WifiNative wifiNative) {
         mWifiInjector = injector;
         mLooper = looper;
+        mHandler = new Handler(looper);
         mWifiNative = wifiNative;
         mWifiController = new WifiController();
+
+        mWifiNative.registerStatusListener(isReady -> {
+			Log.i(TAG, "enter listener callback");
+            if (!isReady && !mIsShuttingdown) {
+                mHandler.post(() -> {
+                    Log.e(TAG, "One of the native daemons (ExtendWifiHal/ExtendHostapd/ExtendQtiWifi) died. Triggering recovery");
+
+                    // immediately trigger SelfRecovery if we receive a notice about an
+                    // underlying daemon failure
+                    // Note: SelfRecovery has a circular dependency with ActiveModeWarden and is
+                    // instantiated after ActiveModeWarden, so use WifiInjector to get the instance
+                    // instead of directly passing in SelfRecovery in the constructor.
+                    mWifiInjector.getSelfRecovery().trigger(SelfRecovery.REASON_WIFINATIVE_FAILURE);
+                });
+            }
+        });
     }
 
     Collection<ActiveModeManager> getActiveModeManagers() {
@@ -185,9 +202,14 @@ public class ActiveModeWarden {
         mWifiController.sendMessage(WifiController.CMD_UPDATE_AP_CONFIG, config);
     }
 
+    /** Disable Wifi for recovery purposes. */
+    public void recoveryDisableWifi() {
+        mWifiController.sendMessage(WifiController.CMD_RECOVERY_DISABLE_WIFI);
+    }
+
     private class WifiController extends StateMachine {
 
-        private static final String TAG = "WifiController";
+        private static final String TAG = "ExtendWifiController";
 
         // Maximum limit to use for timeout delay if the value from overlay setting is too large.
         private static final int MAX_RECOVERY_TIMEOUT_DELAY_MS = 4000;
@@ -200,7 +222,7 @@ public class ActiveModeWarden {
         // Command used to trigger a wifi stack restart when in active mode
         static final int CMD_RECOVERY_RESTART_WIFI                  = BASE + 17;
         // Internal command used to complete wifi stack restart
-        private static final int CMD_RECOVERY_RESTART_WIFI_CONTINUE = BASE + 18;
+        static final int CMD_RECOVERY_RESTART_WIFI_CONTINUE          = BASE + 18;
         // Command to disable wifi when SelfRecovery is throttled or otherwise not doing full
         // recovery
         static final int CMD_RECOVERY_DISABLE_WIFI                   = BASE + 19;
@@ -208,6 +230,7 @@ public class ActiveModeWarden {
         static final int CMD_AP_START_FAILURE                        = BASE + 23;
         static final int CMD_UPDATE_AP_CAPABILITY                    = BASE + 24;
         static final int CMD_UPDATE_AP_CONFIG                        = BASE + 25;
+        static final int CMD_RECOVERY_RESTART_WIFI_HAL               = BASE + 26;
 
         private final EnabledState mEnabledState;
         private final DisabledState mDisabledState;
@@ -259,6 +282,8 @@ public class ActiveModeWarden {
                     return "CMD_RECOVERY_RESTART_WIFI";
                 case CMD_RECOVERY_RESTART_WIFI_CONTINUE:
                     return "CMD_RECOVERY_RESTART_WIFI_CONTINUE";
+                case CMD_RECOVERY_RESTART_WIFI_HAL:
+                    return "CMD_RECOVERY_RESTART_WIFI_HAL";
                 case CMD_SET_AP:
                     return "CMD_SET_AP";
                 case CMD_UPDATE_AP_CAPABILITY:
@@ -355,6 +380,8 @@ public class ActiveModeWarden {
                         log("Recovery has been throttled, disable wifi");
                         shutdownWifi();
                         // onStopped will move the state machine to "DisabledState".
+                        sendMessageDelayed(CMD_RECOVERY_RESTART_WIFI_HAL,
+                                msg.obj, readWifiRecoveryDelay());
                         break;
                     case CMD_UPDATE_AP_CAPABILITY:
                         //updateCapabilityToSoftApModeManager((SoftApCapability) msg.obj);
@@ -426,6 +453,10 @@ public class ActiveModeWarden {
                             }
                         }
                         transitionTo(mEnabledState);
+                        break;
+                    case CMD_RECOVERY_RESTART_WIFI_HAL:
+                        log("Recovery in process, initialize wifi and qtiwifi HAL");
+                        mWifiNative.initialize();
                         break;
                     default:
                         return NOT_HANDLED;
