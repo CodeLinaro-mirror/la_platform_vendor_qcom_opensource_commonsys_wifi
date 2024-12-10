@@ -532,7 +532,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             return null;
         }
         return mQtiWifiThreadRunner.call(() ->
-           qtiHostapdHal.doDriverCmd(ifname, command), null);
+            qtiHostapdHal.doDriverCmd(ifname, command), null);
     }
 
     public String doSupplicantDriverCmd(String command) {
@@ -542,6 +542,16 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         }
         return mQtiWifiThreadRunner.call(() ->
             qtiSupplicantStaIfaceHal.doDriverCmd(command), null);
+    }
+
+    public String doHostapdCtrlIfaceCmd(String ifname, String command) {
+        if (!mIsQtiHostapdHalInitialized) {
+            Log.e(TAG, "QtiHostapdHal not initialized yet");
+            return null;
+        }
+
+        return mQtiWifiThreadRunner.call(() ->
+            qtiHostapdHal.doCtrlIfaceCmd(ifname, command), null);
     }
 
     private void enforceAccessPermission() {
