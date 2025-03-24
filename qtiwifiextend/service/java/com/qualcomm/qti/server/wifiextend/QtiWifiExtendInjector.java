@@ -22,7 +22,6 @@
 
 package com.qualcomm.qti.server.wifiextend;
 
-import com.qualcomm.qti.server.wifiextend.QtiWifiExtendServiceImpl.QtiWifiHalListener;
 import com.qualcomm.qti.wifiextend.SoftApConfiguration;
 
 import android.content.Context;
@@ -45,11 +44,13 @@ public class QtiWifiExtendInjector {
     WifiCountryCode mWifiCountryCode;
     ActiveModeWarden mActiveModeWarden;
     WifiNative mWifiNative;
+    SelfRecovery mSelfRecovery;
+
     Context mContext;
 
     WifiHal mWifihal;
     HostapdHal mHostapdHal;
-    QtiWifiHal mQtiWifiHal;
+
     Looper wifiLooper;
     Handler wifiHandler;
 
@@ -64,11 +65,11 @@ public class QtiWifiExtendInjector {
         mSoftApConfigStore = new SoftApConfigStore(context);
         mWifiCountryCode = new WifiCountryCode(mSoftApConfigStore);
 
-        mQtiWifiHal = new QtiWifiHal();
         mWifihal = new WifiHal(context);
         mHostapdHal = new HostapdHal(context, mQtiWifiThreadRunner);
-        mWifiNative = new WifiNative(mWifihal, mHostapdHal, mQtiWifiThreadRunner);
+        mWifiNative = new WifiNative(context, mWifihal, mHostapdHal, mQtiWifiThreadRunner);
         mActiveModeWarden = new ActiveModeWarden(this, wifiLooper, mWifiNative);
+        mSelfRecovery = new SelfRecovery(context, mActiveModeWarden, mWifiNative);
 
     }
 
@@ -107,11 +108,11 @@ public class QtiWifiExtendInjector {
         return mWifiHandlerLocalLog;
     }
 
-    public QtiWifiHal getQtiWifiHal() {
-        return mQtiWifiHal;
-    }
-
     public ActiveModeWarden getActiveModeWarden() {
         return mActiveModeWarden;
+    }
+
+    public SelfRecovery getSelfRecovery() {
+        return mSelfRecovery;
     }
 }
