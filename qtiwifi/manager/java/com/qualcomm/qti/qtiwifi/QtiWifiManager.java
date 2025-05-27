@@ -312,4 +312,125 @@ public class QtiWifiManager {
         public abstract void onThermalChanged(String ifname, int thermal_state);
         public abstract void onCongestionChanged(String ifname, int percentage);
     }
+
+    /**
+     * Base class for Csi callback. Should be extended by applications and set when calling
+     * {@link QtiWifiManager#registerCsiCallback(CsiCallback, Handler)}.
+     *
+     */
+    public interface CsiCallback {
+        public abstract void onCsiUpdate(byte[] info);
+    }
+
+    /**
+     * Callback proxy for CsiCallback objects.
+     *
+     */
+    private static class CsiCallbackProxy extends ICsiCallback.Stub {
+        private final Handler mHandler;
+        private final CsiCallback mCallback;
+
+        CsiCallbackProxy(Looper looper, CsiCallback callback) {
+            mHandler = new Handler(looper);
+            mCallback = callback;
+        }
+
+        @Override
+        public void onCsiUpdate(byte[] info) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onCsiUpdate(info);
+            });
+        }
+    }
+
+    /**
+     * Registers a callback for csi events.
+     * Caller can unregister a previously registered callback using
+     * {@link #unregisterCsiCallback(CsiCallback)}
+     *
+     * @param callback CsiCallback for the application to receive updates about
+     * csi events.
+     * @param handler Handler to be used for callbacks. If the caller passes a null Handler,
+     * the main thread will be used.
+     *
+     */
+    private void registerCsiCallback(CsiCallback callback, Handler handler) {
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "registerCsiCallback: callback=" + callback + ", handler=" + handler);
+
+        Looper looper = (handler == null) ? mContext.getMainLooper() : handler.getLooper();
+        Binder binder = new Binder();
+        try {
+            mService.registerCsiCallback(binder, new CsiCallbackProxy(looper, callback),
+                    callback.hashCode());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Allow callers to unregister a previously registered callback. After calling this method,
+     * applications will no longer receive csi events.
+     *
+     * @param callback Callback to unregister for csi events.
+     *
+     */
+    private void unregisterCsiCallback(CsiCallback callback) {
+        if (callback == null) throw new IllegalArgumentException("callback cannot be null");
+        Log.v(TAG, "unregisterCsiCallback: callback=" + callback);
+
+        try {
+            mService.unregisterCsiCallback(callback.hashCode());
+        } catch (RemoteException e) {
+            throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * API to register for CSI callbacks and start CSI data collection.
+     * CsiCallback is used by caller to receive updates about CSI events.
+     * Optional Handler to be used for callbacks.
+     * If the caller passes a null Handler, the main thread will be used.
+     *
+     * <p>
+     * Applications should have com.qualcomm.permission.QTI_WIFI permission.
+     * Callers without the permission would trigger a {@link java.lang.SecurityException}
+     * <p>
+     *
+     * @param callback CsiCallback for the application to receive csi event updates.
+     * @param handler Handler to be used for callbacks.
+     *
+     */
+    public boolean startCsi(CsiCallback callback, Handler handler) {
+        registerCsiCallback(callback, handler);
+        try {
+            mService.startCsi();
+            return true;
+        } catch (RemoteException e) {
+            Log.e(TAG, "startCsi: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * API to stop CSI data collection and unregister for CsiCallback.
+     *
+     * <p>
+     * Applications should have com.qualcomm.permission.QTI_WIFI permission.
+     * Callers without the permission would trigger a {@link java.lang.SecurityException}
+     * <p>
+     *
+     * @param callback Callback to unregister for csi events.
+     *
+     */
+    public boolean stopCsi(CsiCallback callback) {
+        try {
+            mService.stopCsi();
+        } catch (RemoteException e) {
+            Log.e(TAG, "stopCsi: " + e);
+            return false;
+        }
+        unregisterCsiCallback(callback);
+        return true;
+    }
 }

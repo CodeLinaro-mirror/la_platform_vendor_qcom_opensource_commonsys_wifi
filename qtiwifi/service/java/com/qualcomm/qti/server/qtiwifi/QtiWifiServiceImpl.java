@@ -79,7 +79,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     private Handler mHandler = null;
     private QtiWifiThreadRunner mQtiWifiThreadRunner = null;
 
-    QtiWifiCsiHal qtiWifiCsiHal;
+    QtiWifiCsiHal mQtiWifiCsiHal;
     QtiSupplicantStaIfaceHal qtiSupplicantStaIfaceHal;
     QtiHostapdHal qtiHostapdHal;
     QtiWifiHal qtiWifiHal;
@@ -306,6 +306,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mHandler = new Handler(mHandlerThread.getLooper());
         mQtiWifiThreadRunner = new QtiWifiThreadRunner(mHandler);
         mVendorEventCallbacks = new RemoteCallbackList<>();
+        mQtiWifiCsiHal = new QtiWifiCsiHal();
 
         mWifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
         checkAndInitQtiWifiHal();
@@ -318,6 +319,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             Log.d(TAG, "isWifiEnabled true");
             checkAndInitSupplicantStaIfaceHal();
             mIsQtiSupplicantHalInitialized = true;
+            checkAndInitCfrHal();
         }
         mWifiManager.registerSoftApCallback(new HandlerExecutor(mHandler), mSoftApCallback);
     }
@@ -337,12 +339,6 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         qtiHostapdHal.registerWifiHalListener(mHalListener);
     }
 
-    private void checkAndInitCfrHal() {
-        Log.i(TAG, "checkAndInitCfrHal");
-        qtiWifiCsiHal = new QtiWifiCsiHal();
-        qtiWifiCsiHal.initialize();
-    }
-
     private void checkAndInitQtiWifiHal() {
         Log.i(TAG, "checkAndInitQtiWifiHal");
         qtiWifiHal = new QtiWifiHal();
@@ -358,6 +354,11 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
             Log.e(TAG, "Failed to setup iface in supplicant on wlan0");
         }
         qtiSupplicantStaIfaceHal.registerWifiHalListener(mHalListener);
+    }
+
+    private void checkAndInitCfrHal() {
+        Log.i(TAG, "checkAndInitCfrHal");
+        mQtiWifiCsiHal.initialize();
     }
 
     private WifiManager.SoftApCallback mSoftApCallback = new WifiManager.SoftApCallback() {
@@ -389,6 +390,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                  if ((state == WifiManager.WIFI_STATE_ENABLED) && !mIsQtiSupplicantHalInitialized) {
                      Log.i(TAG, "Didn't iniltailze the supplicant hals, now initializing");
                      checkAndInitSupplicantStaIfaceHal();
+                     checkAndInitCfrHal();
                      mIsQtiSupplicantHalInitialized = true;
                  } else if (state == WifiManager.WIFI_STATE_DISABLED) {
                      Log.i(TAG, "received wifi disabled");
@@ -493,7 +495,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         enforceAccessPermission();
         Log.i(TAG, "registerCsiCallback uid=%" + Binder.getCallingUid());
         mQtiWifiThreadRunner.run(() ->
-            qtiWifiCsiHal.registerCsiCallback(binder, callback, callbackIdentifier));
+            mQtiWifiCsiHal.registerCsiCallback(binder, callback, callbackIdentifier));
     }
 
     @Override
@@ -501,7 +503,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         enforceAccessPermission();
         Log.i(TAG, "unregisterCsiCallback uid=%" + Binder.getCallingUid());
         mQtiWifiThreadRunner.run(() ->
-            qtiWifiCsiHal.unregisterCsiCallback(callbackIdentifier));
+            mQtiWifiCsiHal.unregisterCsiCallback(callbackIdentifier));
     }
 
     /**
@@ -510,9 +512,9 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     public void startCsi() {
         enforceChangePermission();
         Log.i(TAG, "startCsi");
-        mQtiWifiThreadRunner.run(() -> qtiWifiCsiHal.startCsi());
+        mQtiWifiThreadRunner.run(() -> mQtiWifiCsiHal.startCsi());
         mQtiWifiThreadRunner.run(() -> qtiSupplicantStaIfaceHal.doDriverCmd(
-				"CSI start 0"));
+                                "CSI start 0 1 data_mask=0x100"));
     }
 
     /**
@@ -522,8 +524,8 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         enforceChangePermission();
         Log.i(TAG, "stopCsi");
         mQtiWifiThreadRunner.run(() -> qtiSupplicantStaIfaceHal.doDriverCmd(
-				"CSI stop"));
-        mQtiWifiThreadRunner.run(() -> qtiWifiCsiHal.stopCsi());
+                                "CSI stop"));
+        mQtiWifiThreadRunner.run(() -> mQtiWifiCsiHal.stopCsi());
     }
 
     public String doHostapdDriverCmd(String ifname, String command) {

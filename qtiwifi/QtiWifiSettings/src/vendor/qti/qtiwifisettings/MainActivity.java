@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.util.List;
 
 import android.net.wifi.WifiManager;
+import android.net.wifi.SupplicantState;
 import com.qualcomm.qti.qtiwifi.QtiWifiManager;
 import com.qualcomm.qti.qtiwifi.ThermalData;
 import com.qualcomm.qti.qtiwifi.CarPlayIEData;
@@ -72,8 +73,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static final String TAG = "QtiWifiSettingsApp";
     private Intent mServiceIntent;
     //button objects
-    private Button buttonStart;
-    private Button buttonStop;
+    private Button buttonCsiStop;
     private Button buttonCommand;
     private Button buttonCarPlay;
     private EditText editTextCommand;
@@ -102,11 +102,29 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static final String COMMAND_SET_TXPOWER = "set-txpower";
     private static final String COMMAND_SET_ANI = "set-ani-level";
     private static final String COMMAND_SET_CONGESTION = "set-congestion-report";
+    private static final String COMMAND_START_CSI = "start-csi";
     private static final String COMMAND_RESULT_FAILED = "FAILED";
     private static final String COMMAND_RESULT_SUCCESS = "SUCCESS";
     private static final String COMMAND_RESULT_INVALID_COMMAND = "Invalid command!";
     private static final String COMMAND_RESULT_INVALID_ARGS = "Invalid args!";
     private static final String COMMAND_SET_CARPLAY = "carplay";
+
+    private QtiWifiManager.CsiCallback mCsiCallback = new QtiWifiManager.CsiCallback() {
+        @Override
+        public void onCsiUpdate(byte[] info) {
+            StringBuilder strBuilder = new StringBuilder();
+            for(byte val : info) {
+                strBuilder.append(String.format("%02x", val&0xff));
+            }
+            Log.d(TAG, "onCsiUpdate csi info = " + info);
+            try {
+                outputWriter.write(strBuilder.toString());
+                Log.i(TAG, "Successfully write into the file");
+            } catch (IOException e) {
+                Log.e(TAG, "Error while writing into the file");
+            }
+        }
+    };
 
     private QtiWifiManager.VendorEventCallback mVendorEventCallback =
         new QtiWifiManager.VendorEventCallback() {
@@ -166,6 +184,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
         buttonCarPlay = (Button) findViewById(R.id.buttonCarPlay);
         buttonCarPlay.setOnClickListener(this);
 
+        //Csi relative
+        buttonCsiStop = (Button) findViewById(R.id.buttonCsiStop);
+        buttonCsiStop.setOnClickListener(this);
+		buttonCsiStop.setVisibility(View.GONE);
+
         mWifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
     }
 
@@ -209,6 +232,25 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 reply = setCarPlayIE(params);
             } else if (params[0].equals(COMMAND_SET_CONGESTION)) {
                 reply = setCongestion(params);
+            } else if (params[0].equals(COMMAND_START_CSI)) {
+                //starting service
+                if (!mWifiManager.isWifiEnabled()) {
+                    reply = "Turn on Wifi before capturing CSI data";
+                    Log.e(TAG, "Turn on Wifi before capturing CSI data");
+                } else if (mWifiManager.getConnectionInfo().getSupplicantState() != SupplicantState.COMPLETED) {
+                    reply = "Wifi is not connected, CSI not started";
+                } else {
+                    reply = "CSI start until user stops";
+                    mUniqueInstance.startCsi(mCsiCallback, null);
+                    buttonCommand.setVisibility(View.GONE);
+                    buttonCsiStop.setVisibility(View.VISIBLE);
+                    try {
+                        fileout=openFileOutput("mytextfile.txt", MODE_PRIVATE);
+                        outputWriter=new OutputStreamWriter(fileout);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Failed to open file");
+                    }
+                }
             } else {
                 reply = COMMAND_RESULT_INVALID_COMMAND;
             }
@@ -239,6 +281,19 @@ public class MainActivity extends Activity implements View.OnClickListener {
             mCarPlayIEData.setHessid(hessid);
             reply = "Set parameters completely.";
             textViewCommand.setText(reply);
+        } else if (view == buttonCsiStop) {
+            //stopping service
+            String reply = "CSI stopped";
+            mUniqueInstance.stopCsi(mCsiCallback);
+            buttonCommand.setVisibility(View.VISIBLE);
+			buttonCsiStop.setVisibility(View.GONE);
+            textViewCommand.setText(reply);
+            try {
+                outputWriter.close();
+                Log.i(TAG, "Succseefully close the file");
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to close the file");
+            }
         }
     }
 
