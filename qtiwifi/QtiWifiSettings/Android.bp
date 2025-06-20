@@ -14,6 +14,7 @@ android_app {
         "qtiwifi_manager",
     ],
 
+    system_ext_specific: true,
     certificate: "platform",
     platform_apis: false,
     sdk_version: "current",
