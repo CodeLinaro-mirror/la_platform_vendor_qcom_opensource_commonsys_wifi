@@ -62,6 +62,7 @@ import com.qualcomm.qti.qtiwifi.IQtiInterfaceCallback;
 import com.qualcomm.qti.qtiwifi.IQtiWifiManager;
 import com.qualcomm.qti.qtiwifi.IVendorEventCallback;
 import com.qualcomm.qti.qtiwifi.ThermalData;
+import com.qualcomm.qti.qtiwifi.CsiConfiguration;
 import vendor.qti.hardware.wifi.supplicant.ISupplicantVendor;
 import android.content.pm.PackageManager;
 import com.qualcomm.qti.server.qtiwifi.util.GeneralUtil;
@@ -480,6 +481,31 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mQtiWifiThreadRunner.run(() -> mQtiSupplicantStaIfaceHal.doDriverCmd(
                                 "CSI stop"));
         mQtiWifiThreadRunner.run(() -> mQtiWifiCsiHal.stopCsi());
+    }
+
+    @Override
+    public void scheduleCsiStart(int delaySeconds) {
+        // Dummy implementation
+        Log.i(TAG, "scheduleCsiStart: " + delaySeconds);
+    }
+
+    @Override
+    public void scheduleCsiStop(int delaySeconds) {
+        // Dummy implementation
+        Log.i(TAG, "scheduleCsiStop: " + delaySeconds);
+    }
+
+    @Override
+    public void setCsiConfiguration(CsiConfiguration config) {
+        // Dummy implementation
+        Log.i(TAG, "setCsiConfiguration: " + config);
+    }
+
+    @Override
+    public CsiConfiguration getCsiConfiguration() {
+        // Dummy implementation
+        Log.i(TAG, "getCsiConfiguration");
+        return null;
     }
 
     private void enforceAccessPermission() {
