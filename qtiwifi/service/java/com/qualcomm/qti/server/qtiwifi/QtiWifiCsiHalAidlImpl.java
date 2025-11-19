@@ -34,6 +34,7 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     private static final int NUM_CSI_CALLBACKS_WTF_LIMIT = 20;
     private final HashMap<Integer, ICsiCallback> mRegisteredCsiCallbacks;
 
+    private QtiWifiThreadRunner mThreadRunner;
     private WificfrDeathRecipient mWificfrDeathRecipient;
     private class WificfrDeathRecipient implements DeathRecipient {
         @Override
@@ -52,13 +53,17 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         @Override
         public void onCfrDataAvailable(byte[] info) {
             Log.i(TAG, "onCfrDataAvailable called");
-            for (ICsiCallback callback : mRegisteredCsiCallbacks.values()) {
-                try {
-                    callback.onCsiUpdate(info);
-                } catch (RemoteException e) {
-                    Log.e(TAG, "onCsiUpdate failed for a callback", e);
+            mThreadRunner.run(() -> {
+                synchronized (mLock) {
+                    for (ICsiCallback callback : mRegisteredCsiCallbacks.values()) {
+                        try {
+                            callback.onCsiUpdate(info);
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "onCsiUpdate failed for a callback", e);
+                        }
+                    }
                 }
-            }
+            });
         }
 
         @Override
@@ -72,10 +77,11 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         }
     }
 
-    public QtiWifiCsiHalAidlImpl() {
+    public QtiWifiCsiHalAidlImpl(QtiWifiThreadRunner threadRunner) {
         mWificfrDeathRecipient = new WificfrDeathRecipient();
         mIWificfrDataCallback = new WificfrDataCallback();
         mRegisteredCsiCallbacks = new HashMap<>();
+        mThreadRunner = threadRunner;
     }
 
     /**
@@ -310,4 +316,3 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
        }
     }
 }
-

@@ -229,7 +229,7 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         mVendorEventCallbacks = new RemoteCallbackList<>();
         mQtiWifiHandler = new QtiWifiHandler();
         mQtiSupplicantIface = new QtiSupplicantIface();
-        mQtiWifiCsiHal = new QtiWifiCsiHal();
+        mQtiWifiCsiHal = new QtiWifiCsiHal(mQtiWifiThreadRunner);
         mQtiWifiVendorHal = new QtiWifiVendorHal(mQtiWifiHandler);
         mQtiSupplicantStaIfaceHal = new QtiSupplicantStaIfaceHal(mQtiSupplicantIface);
         mQtiSupplicantStaIfaceAOSPHal = new QtiSupplicantStaIfaceAOSPHal(mQtiSupplicantIface, mQtiWifiHandler);
