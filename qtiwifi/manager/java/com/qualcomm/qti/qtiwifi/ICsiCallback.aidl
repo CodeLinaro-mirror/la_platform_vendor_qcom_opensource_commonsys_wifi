@@ -38,7 +38,10 @@ package com.qualcomm.qti.qtiwifi;
  *
  */
 
+import android.os.ParcelFileDescriptor;
+
 oneway interface ICsiCallback
 {
     void onCsiUpdate(in byte[] info);
+    void onLargeCsiData(in ParcelFileDescriptor pfd);
 }
