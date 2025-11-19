@@ -33,7 +33,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     /* Limit on number of registered csi callbacks to track and prevent potential memory leak */
     private static final int NUM_CSI_CALLBACKS_WTF_LIMIT = 20;
     private final HashMap<Integer, ICsiCallback> mRegisteredCsiCallbacks;
-    private ICsiCallback mCsiCallback;
 
     private WificfrDeathRecipient mWificfrDeathRecipient;
     private class WificfrDeathRecipient implements DeathRecipient {
@@ -53,13 +52,12 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         @Override
         public void onCfrDataAvailable(byte[] info) {
             Log.i(TAG, "onCfrDataAvailable called");
-            if (mCsiCallback != null) {
+            for (ICsiCallback callback : mRegisteredCsiCallbacks.values()) {
                 try {
-                    mCsiCallback.onCsiUpdate(info);
+                    callback.onCsiUpdate(info);
                 } catch (RemoteException e) {
-                    Log.e(TAG, "onCsiUpdate " + e);
+                    Log.e(TAG, "onCsiUpdate failed for a callback", e);
                 }
-
             }
         }
 
@@ -264,7 +262,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
             return;
         }
 
-        mCsiCallback = callback;
         mRegisteredCsiCallbacks.put(callbackIdentifier, callback);
 
         if (mRegisteredCsiCallbacks.size() > NUM_CSI_CALLBACKS_WTF_LIMIT) {
@@ -274,9 +271,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     }
 
     public void unregisterCsiCallback(int callbackIdentifier) {
-        if (mCsiCallback != null)
-            mCsiCallback = null;
-
         mRegisteredCsiCallbacks.remove(callbackIdentifier);
     }
 
