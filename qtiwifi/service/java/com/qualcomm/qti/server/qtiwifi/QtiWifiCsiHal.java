@@ -76,6 +76,7 @@ public class QtiWifiCsiHal {
             int callbackIdentifier) {
         if (mQtiWifiCsiHal == null) {
             Log.e(TAG, "Internal IQtiWifiCsiHal instance does not exist.");
+            return;
         }
         mQtiWifiCsiHal.registerCsiCallback(binder, callback, callbackIdentifier);
     }
@@ -83,6 +84,7 @@ public class QtiWifiCsiHal {
     public void unregisterCsiCallback(int callbackIdentifier) {
         if (mQtiWifiCsiHal == null) {
             Log.e(TAG, "Internal IQtiWifiCsiHal instance does not exist.");
+            return;
         }
         mQtiWifiCsiHal.unregisterCsiCallback(callbackIdentifier);
     }
@@ -90,6 +92,7 @@ public class QtiWifiCsiHal {
     public void startCsi() {
         if (mQtiWifiCsiHal == null) {
             Log.e(TAG, "Internal IQtiWifiCsiHal instance does not exist.");
+            return;
         }
         mQtiWifiCsiHal.startCsi();
     }
@@ -97,6 +100,7 @@ public class QtiWifiCsiHal {
     public void stopCsi() {
         if (mQtiWifiCsiHal == null) {
             Log.e(TAG, "Internal IQtiWifiCsiHal instance does not exist.");
+            return;
         }
         mQtiWifiCsiHal.stopCsi();
     }
