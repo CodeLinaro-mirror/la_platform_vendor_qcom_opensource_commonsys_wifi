@@ -33,8 +33,8 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     /* Limit on number of registered csi callbacks to track and prevent potential memory leak */
     private static final int NUM_CSI_CALLBACKS_WTF_LIMIT = 20;
     private final HashMap<Integer, ICsiCallback> mRegisteredCsiCallbacks;
-    private ICsiCallback mCsiCallback;
 
+    private QtiWifiThreadRunner mThreadRunner;
     private WificfrDeathRecipient mWificfrDeathRecipient;
     private class WificfrDeathRecipient implements DeathRecipient {
         @Override
@@ -53,14 +53,17 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         @Override
         public void onCfrDataAvailable(byte[] info) {
             Log.i(TAG, "onCfrDataAvailable called");
-            if (mCsiCallback != null) {
-                try {
-                    mCsiCallback.onCsiUpdate(info);
-                } catch (RemoteException e) {
-                    Log.e(TAG, "onCsiUpdate " + e);
+            mThreadRunner.run(() -> {
+                synchronized (mLock) {
+                    for (ICsiCallback callback : mRegisteredCsiCallbacks.values()) {
+                        try {
+                            callback.onCsiUpdate(info);
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "onCsiUpdate failed for a callback", e);
+                        }
+                    }
                 }
-
-            }
+            });
         }
 
         @Override
@@ -74,10 +77,11 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         }
     }
 
-    public QtiWifiCsiHalAidlImpl() {
+    public QtiWifiCsiHalAidlImpl(QtiWifiThreadRunner threadRunner) {
         mWificfrDeathRecipient = new WificfrDeathRecipient();
         mIWificfrDataCallback = new WificfrDataCallback();
         mRegisteredCsiCallbacks = new HashMap<>();
+        mThreadRunner = threadRunner;
     }
 
     /**
@@ -264,7 +268,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
             return;
         }
 
-        mCsiCallback = callback;
         mRegisteredCsiCallbacks.put(callbackIdentifier, callback);
 
         if (mRegisteredCsiCallbacks.size() > NUM_CSI_CALLBACKS_WTF_LIMIT) {
@@ -274,9 +277,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     }
 
     public void unregisterCsiCallback(int callbackIdentifier) {
-        if (mCsiCallback != null)
-            mCsiCallback = null;
-
         mRegisteredCsiCallbacks.remove(callbackIdentifier);
     }
 
@@ -316,4 +316,3 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
        }
     }
 }
-
