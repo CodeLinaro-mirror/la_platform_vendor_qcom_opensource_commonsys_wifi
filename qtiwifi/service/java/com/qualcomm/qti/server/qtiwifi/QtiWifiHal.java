@@ -81,8 +81,30 @@ public class QtiWifiHal {
                 } else {
                     Log.e(TAG, "Could not parse congestion event=" + eventStr);
                 }
+            // AP-STA-CONNECTING 00:11:22:33:44:55
+            } else if (eventStr.startsWith(QtiWifiServiceImpl.AP_STA_CONNECTING_EVENT_STR)) {
+                    Matcher match = QtiWifiServiceImpl.AP_STA_CONNECTING_PATTERN.matcher(eventStr);
+                if (match.find()) {
+                    String macAddress = match.group(1);
+                    Log.d(TAG, "Parsed AP-STA-CONNECTING: MAC=" + macAddress);
+                    mWifiHalListener.onStaConnecting(ifaceName, macAddress);
+                } else {
+                    Log.e(TAG, "Could not parse AP-STA-CONNECTING event=" + eventStr);
+                }
+            // AP-STA-PASSWORD-WRONG 00:11:22:33:44:55 reason=2
+            } else if (eventStr.startsWith(QtiWifiServiceImpl.AP_STA_PASSWORD_WRONG_EVENT_STR)) {
+                    Matcher match = QtiWifiServiceImpl.AP_STA_PASSWORD_WRONG_PATTERN.matcher(eventStr);
+                if (match.find()) {
+                    String macAddress = match.group(1);
+                    int reasonCode = Integer.parseInt(match.group(2));
+                    Log.d(TAG, "Parsed AP-STA-PASSWORD-WRONG: MAC=" + macAddress
+                          + ", reason=" + reasonCode);
+                    mWifiHalListener.onPasswordWrong(ifaceName, macAddress, reasonCode);
+                } else {
+                    Log.e(TAG, "Could not parse AP-STA-PASSWORD-WRONG event=" + eventStr);
+                }
             } else {
-                Log.e(TAG, "Could not parse this event");
+                Log.e(TAG, "Could not parse this event: " + eventStr);
             }
         }
 
@@ -282,4 +304,3 @@ public class QtiWifiHal {
         }
     }
 }
-
