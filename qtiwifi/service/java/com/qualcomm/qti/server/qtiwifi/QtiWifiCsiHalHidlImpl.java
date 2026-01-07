@@ -57,6 +57,7 @@ public class QtiWifiCsiHalHidlImpl implements IQtiWifiCsiHal {
     private static final int NUM_CSI_CALLBACKS_WTF_LIMIT = 20;
     private final HashMap<Integer, ICsiCallback> mRegisteredCsiCallbacks;
     private ICsiCallback mCsiCallback;
+    private QtiWifiThreadRunner mThreadRunner;
 
     /********************************************************
      * WifiCsi operations
@@ -80,24 +81,24 @@ public class QtiWifiCsiHalHidlImpl implements IQtiWifiCsiHal {
         @Override
         public void onCfrDataAvailable(ArrayList<Byte> info) {
             Log.i(TAG, "onCfrDataAvailable called");
-
-            if (mCsiCallback != null) {
-                try {
-                    byte[] byteArray = new byte[(info).size()];
-                    int i = 0;
-                    for (Byte b : info) {
-                        byteArray[i++] = b;
+            mThreadRunner.run(() -> {
+                if (mCsiCallback != null) {
+                    try {
+                        byte[] byteArray = new byte[(info).size()];
+                        int i = 0;
+                        for (Byte b : info) {
+                            byteArray[i++] = b;
+                        }
+                        StringBuilder strBuilder = new StringBuilder();
+                        for(byte val : byteArray) {
+                            strBuilder.append(String.format("%02x", val&0xff));
+                        }
+                        mCsiCallback.onCsiUpdate(byteArray);
+                    } catch (RemoteException e) {
+                        Log.e(TAG, "onCsiUpdate " + e);
                     }
-                    StringBuilder strBuilder = new StringBuilder();
-                    for(byte val : byteArray) {
-                        strBuilder.append(String.format("%02x", val&0xff));
-                    }
-                    mCsiCallback.onCsiUpdate(byteArray);
-                } catch (RemoteException e) {
-                    Log.e(TAG, "onCsiUpdate " + e);
                 }
-
-            }
+            });
         }
     }
 
@@ -135,9 +136,10 @@ public class QtiWifiCsiHalHidlImpl implements IQtiWifiCsiHal {
             };
 
 
-    public QtiWifiCsiHalHidlImpl() {
+    public QtiWifiCsiHalHidlImpl(QtiWifiThreadRunner threadRunner) {
         mIWifiCfrDataCallback = new WifiCfrDataCallback();
         mRegisteredCsiCallbacks = new HashMap<>();
+        mThreadRunner = threadRunner;
     }
 
     /**
