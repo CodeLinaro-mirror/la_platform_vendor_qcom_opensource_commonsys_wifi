@@ -190,6 +190,20 @@ public class QtiWifiManager {
                 mCallback.onCongestionChanged(ifname, percentage);
             });
         }
+
+        @Override
+        public void onStaConnecting(String ifname, String macAddress) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onStaConnecting(ifname, macAddress);
+            });
+        }
+
+        @Override
+        public void onPasswordWrong(String ifname, String macAddress, int reasonCode) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onPasswordWrong(ifname, macAddress, reasonCode);
+            });
+        }
     }
 
     public void registerVendorEventCallback(VendorEventCallback callback, Handler handler) {
@@ -338,5 +352,7 @@ public class QtiWifiManager {
     public interface VendorEventCallback {
         public abstract void onThermalChanged(String ifname, int thermal_state);
         public abstract void onCongestionChanged(String ifname, int percentage);
+        public default void onStaConnecting(String ifname, String macAddress) {}
+        public default void onPasswordWrong(String ifname, String macAddress, int reasonCode) {}
     }
 }

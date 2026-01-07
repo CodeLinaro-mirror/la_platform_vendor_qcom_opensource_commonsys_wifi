@@ -14,4 +14,6 @@ oneway interface IVendorEventCallback
 {
     void onThermalChanged(String ifname, int level);
     void onCongestionChanged(String ifname, int percentage);
+    void onStaConnecting(String ifname, String macAddress);
+    void onPasswordWrong(String ifname, String macAddress, int reasonCode);
 }
