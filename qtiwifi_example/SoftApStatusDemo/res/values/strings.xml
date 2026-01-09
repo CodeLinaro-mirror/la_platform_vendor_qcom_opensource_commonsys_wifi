@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+     SPDX-License-Identifier: BSD-3-Clause-Clear
+-->
+<resources>
+    <string name="app_name">SoftAP Status Demo</string>
+    
+    <!-- Configuration -->
+    <string name="softap_configuration">SoftAP Configuration</string>
+    <string name="ssid_label">SSID:</string>
+    <string name="ssid_hint">Enter SSID (e.g., TestAP)</string>
+    <string name="security_label">Security Type:</string>
+    <string name="password_label">Password:</string>
+    <string name="password_hint">Enter password (min 8 characters)</string>
+    
+    <!-- Security types -->
+    <string-array name="security_types">
+        <item>Open</item>
+        <item>WPA2-PSK</item>
+        <item>WPA3-SAE</item>
+    </string-array>
+    
+    <!-- Control buttons -->
+    <string name="softap_control">SoftAP Control</string>
+    <string name="start_softap">Start SoftAP</string>
+    <string name="stop_softap">Stop SoftAP</string>
+    <string name="register_callback">Register QtiWifi Callback</string>
+    <string name="unregister_callback">Unregister QtiWifi Callback</string>
+    <string name="clear_log">Clear Log</string>
+    
+    <!-- Status sections -->
+    <string name="android_native_status">Android Native Status (Hostapd Callbacks)</string>
+    <string name="qtiwifi_vendor_events">QtiWifi Vendor Events (Connecting/Password Wrong)</string>
+    <string name="connected_clients">Connected Clients</string>
+    
+    <!-- Default messages -->
+    <string name="no_status">No status available</string>
+    <string name="no_events">No vendor events received yet.\n\nExpected events:\n- AP-STA-CONNECTING: When STA starts connecting\n- AP-STA-PASSWORD-WRONG: When password is incorrect</string>
+    <string name="no_clients">No clients connected</string>
+    
+    <!-- Toast messages -->
+    <string name="qtiwifi_not_available">QtiWifiManager not available</string>
+    <string name="callback_registered">Vendor event callback registered</string>
+    <string name="callback_unregistered">Vendor event callback unregistered</string>
+    <string name="softap_started">SoftAP started</string>
+    <string name="softap_stopped">SoftAP stopped</string>
+    <string name="softap_start_failed">Failed to start SoftAP</string>
+    <string name="softap_stop_failed">Failed to stop SoftAP</string>
+    <string name="invalid_ssid">Please enter a valid SSID</string>
+    <string name="invalid_password">Password must be at least 8 characters for WPA2/WPA3</string>
+    <string name="softap_already_running">SoftAP is already running</string>
+</resources>

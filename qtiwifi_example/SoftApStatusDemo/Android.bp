@@ -1,0 +1,30 @@
+// Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries
+// SPDX-License-Identifier: BSD-3-Clause-Clear
+
+android_app {
+    name: "SoftApStatusDemo",
+    
+    srcs: ["src/**/*.java"],
+    
+    resource_dirs: ["res"],
+    
+    platform_apis: true,
+    certificate: "platform",
+    privileged: true,
+    
+    libs: [
+        "framework-wifi.stubs.system",
+    ],
+
+    static_libs: [
+        "qtiwifi_manager",
+    ],
+    
+    optimize: {
+        enabled: false,
+    },
+    
+    dex_preopt: {
+        enabled: false,
+    },
+}
