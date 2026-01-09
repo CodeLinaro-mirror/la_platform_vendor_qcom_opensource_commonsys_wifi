@@ -39,7 +39,7 @@ import com.qualcomm.qti.qtiwifi.CarPlayIEData;
 
 interface IQtiWifiManager
 {
-    void startCsi();
+    void startCsi(String command);
     void stopCsi();
     void registerCsiCallback(in IBinder binder, in ICsiCallback callback, int callbackIdentifier);
     void unregisterCsiCallback(int callbackIdentifier);
