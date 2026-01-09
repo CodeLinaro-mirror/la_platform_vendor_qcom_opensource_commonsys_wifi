@@ -240,8 +240,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 } else if (mWifiManager.getConnectionInfo().getSupplicantState() != SupplicantState.COMPLETED) {
                     reply = "Wifi is not connected, CSI not started";
                 } else {
-                    reply = "CSI start until user stops";
-                    mUniqueInstance.startCsi(mCsiCallback, null);
+                    reply = "CSI start until user stops" + command.substring(params[0].length()).trim();
+                    mUniqueInstance.startCsi(mCsiCallback, null, command.substring(params[0].length()).trim());
                     buttonCommand.setVisibility(View.GONE);
                     buttonCsiStop.setVisibility(View.VISIBLE);
                     try {
