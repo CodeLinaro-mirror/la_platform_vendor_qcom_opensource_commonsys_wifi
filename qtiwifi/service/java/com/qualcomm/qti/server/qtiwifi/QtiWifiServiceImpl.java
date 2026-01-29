@@ -91,10 +91,16 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     /* Hal vendor event string */
     public static final String THERMAL_EVENT_STR = "CTRL-EVENT-THERMAL-CHANGED";
     public static final String CONGESTION_EVENT_STR = "CTRL-EVENT-CONGESTION-REPORT";
+    public static final String AP_STA_CONNECTING_EVENT_STR = "AP-STA-CONNECTING";
+    public static final String AP_STA_PASSWORD_WRONG_EVENT_STR = "AP-STA-PASSWORD-WRONG";
     public static final Pattern THERMAL_PATTERN =
         Pattern.compile(THERMAL_EVENT_STR + " level=([0-9]+)");
     public static final Pattern CONGESTION_PATTERN =
         Pattern.compile(CONGESTION_EVENT_STR + " percentage=([0-9]+)");
+    public static final Pattern AP_STA_CONNECTING_PATTERN =
+        Pattern.compile(AP_STA_CONNECTING_EVENT_STR + " ([0-9a-fA-F:]+)");
+    public static final Pattern AP_STA_PASSWORD_WRONG_PATTERN =
+        Pattern.compile(AP_STA_PASSWORD_WRONG_EVENT_STR + " ([0-9a-fA-F:]+) reason=(\\d+)");
 
     /* Vendor callbacks */
     private final RemoteCallbackList<IVendorEventCallback> mVendorEventCallbacks;
@@ -232,6 +238,8 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     public interface WifiHalListener {
         void onThermalChanged(String ifname, int level);
         void onCongestionChanged(String ifname, int percent);
+        void onStaConnecting(String ifname, String macAddress);
+        void onPasswordWrong(String ifname, String macAddress, int reasonCode);
     }
 
     private int toFrameworkThermalLevel(int original_val) {
@@ -284,6 +292,39 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
                             ifname, percentage);
                     } catch (Exception e) {
                         Log.e(TAG, "onCongestionChanged error.");
+                    }
+                }
+                mVendorEventCallbacks.finishBroadcast();
+            }
+        }
+
+        @Override
+        public void onStaConnecting(String ifname, String macAddress) {
+            Log.d(TAG, "onStaConnecting: ifname=" + ifname + ", MAC=" + macAddress);
+            synchronized (mVendorEventCallbacks) {
+                int itemCount = mVendorEventCallbacks.beginBroadcast();
+                for (int i = 0; i < itemCount; ++i) {
+                    try {
+                        mVendorEventCallbacks.getBroadcastItem(i).onStaConnecting(ifname, macAddress);
+                    } catch (Exception e) {
+                        Log.e(TAG, "onStaConnecting: callback invocation failed", e);
+                    }
+                }
+                mVendorEventCallbacks.finishBroadcast();
+            }
+        }
+
+        @Override
+        public void onPasswordWrong(String ifname, String macAddress, int reasonCode) {
+            Log.d(TAG, "onPasswordWrong: ifname=" + ifname + ", MAC=" + macAddress
+                  + ", reason=" + reasonCode);
+            synchronized (mVendorEventCallbacks) {
+                int itemCount = mVendorEventCallbacks.beginBroadcast();
+                for (int i = 0; i < itemCount; ++i) {
+                    try {
+                        mVendorEventCallbacks.getBroadcastItem(i).onPasswordWrong(ifname, macAddress, reasonCode);
+                    } catch (Exception e) {
+                        Log.e(TAG, "onPasswordWrong: callback invocation failed", e);
                     }
                 }
                 mVendorEventCallbacks.finishBroadcast();

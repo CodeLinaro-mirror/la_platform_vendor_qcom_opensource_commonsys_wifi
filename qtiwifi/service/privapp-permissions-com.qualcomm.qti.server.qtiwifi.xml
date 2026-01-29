@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<!--
+    Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+    SPDX-License-Identifier: BSD-3-Clause-Clear
+-->
+
+<permissions>
+    <privapp-permissions package="com.qualcomm.qti.server.qtiwifi">
+        <permission name="android.permission.OVERRIDE_WIFI_CONFIG"/>
+        <!-- Multi-user support permissions -->
+        <permission name="android.permission.INTERACT_ACROSS_USERS"/>
+        <permission name="android.permission.INTERACT_ACROSS_USERS_FULL"/>
+    </privapp-permissions>
+</permissions>

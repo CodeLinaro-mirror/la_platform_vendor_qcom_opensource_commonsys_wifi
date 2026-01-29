@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+     SPDX-License-Identifier: BSD-3-Clause-Clear
+-->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingStart="8dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingBottom="8dp"/>
+
+        <!-- Main Content: Configuration on left, Control buttons on right -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:baselineAligned="false">
+
+            <!-- Left side: Configuration inputs -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
+
+                <!-- SoftAP Configuration Section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/softap_configuration"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp"/>
+
+                <!-- SSID Input -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/ssid_label"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:paddingTop="4dp"
+                    android:textColor="@android:color/black"/>
+
+                <EditText
+                    android:id="@+id/editTextSsid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/ssid_hint"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:textSize="9sp"
+                    android:padding="6dp"
+                    android:background="@android:color/white"
+                    android:textColor="@android:color/black"
+                    android:textColorHint="@android:color/darker_gray"/>
+
+                <!-- Security Type Spinner -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/security_label"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:paddingTop="4dp"
+                    android:textColor="@android:color/black"/>
+
+                <Spinner
+                    android:id="@+id/spinnerSecurity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:spinnerMode="dropdown"
+                    android:padding="6dp"
+                    android:background="@android:color/white"
+                    android:minHeight="26dp"/>
+
+                <!-- Password Input -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/password_label"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:paddingTop="4dp"
+                    android:textColor="@android:color/black"/>
+
+                <EditText
+                    android:id="@+id/editTextPassword"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="@string/password_hint"
+                    android:inputType="textPassword"
+                    android:maxLines="1"
+                    android:textSize="9sp"
+                    android:padding="6dp"
+                    android:background="@android:color/white"
+                    android:textColor="@android:color/black"
+                    android:textColorHint="@android:color/darker_gray"/>
+            </LinearLayout>
+
+            <!-- Right side: Control buttons -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginStart="8dp">
+
+                <!-- SoftAP Control Section -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/softap_control"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp"/>
+
+                <Button
+                    android:id="@+id/buttonStartSoftAp"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/start_softap"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#4CAF50"
+                    android:textColor="@android:color/white"/>
+
+                <Button
+                    android:id="@+id/buttonStopSoftAp"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/stop_softap"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#F44336"
+                    android:textColor="@android:color/white"/>
+
+                <Button
+                    android:id="@+id/buttonRegisterCallback"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/register_callback"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#2196F3"
+                    android:textColor="@android:color/white"/>
+
+                <Button
+                    android:id="@+id/buttonUnregisterCallback"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/unregister_callback"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#FF9800"
+                    android:textColor="@android:color/white"/>
+
+                <Button
+                    android:id="@+id/buttonClearLog"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:text="@string/clear_log"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
+                    android:backgroundTint="#9E9E9E"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Status Section: Vertical layout -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingTop="8dp">
+
+            <!-- Combined Status Section (Native + Vendor Events) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SoftAP Status (Native + Vendor Events)"
+                    android:textSize="5sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp"
+                    android:textColor="@android:color/black"/>
+
+                <TextView
+                    android:id="@+id/textViewCombinedStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:text="@string/no_status"
+                    android:textSize="5sp"
+                    android:padding="4dp"
+                    android:background="@android:color/darker_gray"
+                    android:textColor="@android:color/black"
+                    android:scrollbars="vertical"/>
+            </LinearLayout>
+
+            <!-- Connected Clients Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="8dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/connected_clients"
+                    android:textSize="9sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="4dp"
+                    android:textColor="@android:color/black"/>
+
+                <TextView
+                    android:id="@+id/textViewConnectedClients"
+                    android:layout_width="match_parent"
+                    android:layout_height="75dp"
+                    android:text="@string/no_clients"
+                    android:textSize="8sp"
+                    android:padding="4dp"
+                    android:background="@android:color/darker_gray"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

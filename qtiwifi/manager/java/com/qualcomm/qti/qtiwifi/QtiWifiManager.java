@@ -56,6 +56,41 @@ public class QtiWifiManager {
     private static IQtiWifiManager mUniqueInstance = null;
     IQtiWifiManager mService;
 
+    /**
+     * Password wrong reason codes for SoftAP authentication failures.
+     * These codes are reported via {@link VendorEventCallback#onPasswordWrong}.
+     * 
+     * Based on hostapd design:
+     * - Reason 1: SAE authentication failure (WPA3 specific)
+     * - Reason 2: 4-way handshake timeout (WPA2/WPA3)
+     * - Reason 3: 4-way handshake failure (WPA2/WPA3)
+     */
+    /** SAE authentication failure (WPA3 specific) */
+    public static final int PASSWORD_WRONG_REASON_SAE_AUTH_FAILED = 1;
+    /** 4-way handshake timeout (WPA2/WPA3) */
+    public static final int PASSWORD_WRONG_REASON_4WAY_HANDSHAKE_TIMEOUT = 2;
+    /** 4-way handshake failure (WPA2/WPA3) */
+    public static final int PASSWORD_WRONG_REASON_4WAY_HANDSHAKE_FAILED = 3;
+
+    /**
+     * Convert password wrong reason code to human-readable string.
+     * 
+     * @param reasonCode The reason code from {@link VendorEventCallback#onPasswordWrong}
+     * @return Human-readable description of the failure reason
+     */
+    public static String passwordWrongReasonToString(int reasonCode) {
+        switch (reasonCode) {
+            case PASSWORD_WRONG_REASON_SAE_AUTH_FAILED:
+                return "SAE authentication failed (WPA3)";
+            case PASSWORD_WRONG_REASON_4WAY_HANDSHAKE_TIMEOUT:
+                return "4-way handshake timeout";
+            case PASSWORD_WRONG_REASON_4WAY_HANDSHAKE_FAILED:
+                return "4-way handshake failed";
+            default:
+                return "Unknown reason (" + reasonCode + ")";
+        }
+    }
+
     private QtiWifiManager(Context context, IQtiWifiManager service) {
         mContext = context;
         mService = service;
@@ -153,6 +188,20 @@ public class QtiWifiManager {
         public void onCongestionChanged(String ifname, int percentage) throws RemoteException {
             mHandler.post(() -> {
                 mCallback.onCongestionChanged(ifname, percentage);
+            });
+        }
+
+        @Override
+        public void onStaConnecting(String ifname, String macAddress) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onStaConnecting(ifname, macAddress);
+            });
+        }
+
+        @Override
+        public void onPasswordWrong(String ifname, String macAddress, int reasonCode) throws RemoteException {
+            mHandler.post(() -> {
+                mCallback.onPasswordWrong(ifname, macAddress, reasonCode);
             });
         }
     }
@@ -303,5 +352,7 @@ public class QtiWifiManager {
     public interface VendorEventCallback {
         public abstract void onThermalChanged(String ifname, int thermal_state);
         public abstract void onCongestionChanged(String ifname, int percentage);
+        public default void onStaConnecting(String ifname, String macAddress) {}
+        public default void onPasswordWrong(String ifname, String macAddress, int reasonCode) {}
     }
 }
