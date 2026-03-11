@@ -39,12 +39,6 @@ android_app {
                  "android.hidl.manager-V1.0-java",
                  "android.hidl.base-V1.0-java"
                  ],
-    libs: [
-          "android.hardware.wifi.supplicant-V1.0-java",
-          "android.hardware.wifi.supplicant-V1.1-java",
-          "android.hardware.wifi.supplicant-V1.2-java",
-          "android.hardware.wifi.supplicant-V1.3-java",
-          ],
 
     certificate: "platform",
 
