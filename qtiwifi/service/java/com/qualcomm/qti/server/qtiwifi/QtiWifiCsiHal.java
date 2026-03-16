@@ -32,8 +32,8 @@ public class QtiWifiCsiHal {
 
     private IQtiWifiCsiHal mQtiWifiCsiHal;
 
-    public QtiWifiCsiHal() {
-        mQtiWifiCsiHal = createWifiCsiHalMockable();
+    public QtiWifiCsiHal(QtiWifiThreadRunner threadRunner) {
+        mQtiWifiCsiHal = createWifiCsiHalMockable(threadRunner);
         if (mQtiWifiCsiHal == null) {
             Log.e(TAG, "Failed to get internal IQtiWifiCsiHal instance.");
         }
@@ -58,14 +58,14 @@ public class QtiWifiCsiHal {
         }
     }
 
-    private IQtiWifiCsiHal createWifiCsiHalMockable() {
+    private IQtiWifiCsiHal createWifiCsiHalMockable(QtiWifiThreadRunner threadRunner) {
         synchronized (mLock) {
             if (QtiWifiCsiHalHidlImpl.serviceDeclared()) {
                 Log.i(TAG, "Initializing QtiWifiCsiHalHidlImpl using HIDL implementation.");
-                return new QtiWifiCsiHalHidlImpl();
+                return new QtiWifiCsiHalHidlImpl(threadRunner);
             } else if (QtiWifiCsiHalAidlImpl.serviceDeclared()) {
                 Log.i(TAG, "Initializing QtiWifiCsiHalHidlImpl using AIDL implementation.");
-                return new QtiWifiCsiHalAidlImpl();
+                return new QtiWifiCsiHalAidlImpl(threadRunner);
             }
             Log.e(TAG, "No HIDL or AIDL service available for QtiWifiCsiHal.");
             return null;
