@@ -77,6 +77,23 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
                 } else {
                     Log.e(TAG, "Could not parse congestion event=" + eventStr);
                 }
+            } else if (eventStr.startsWith(QtiWifiServiceImpl.AP_STA_CONNECTING_EVENT_STR)) {
+                    Matcher match = QtiWifiServiceImpl.AP_STA_CONNECTING_PATTERN.matcher(eventStr);
+                if (match.find()) {
+                    String macAddress = match.group(1);
+                    mWifiHalListener.onStaConnecting(ifaceName, macAddress);
+                } else {
+                    Log.e(TAG, "Could not parse AP-STA-CONNECTING event=" + eventStr);
+                }
+            } else if (eventStr.startsWith(QtiWifiServiceImpl.AP_STA_PASSWORD_WRONG_EVENT_STR)) {
+                    Matcher match = QtiWifiServiceImpl.AP_STA_PASSWORD_WRONG_PATTERN.matcher(eventStr);
+                if (match.find()) {
+                    String macAddress = match.group(1);
+                    int reasonCode = Integer.parseInt(match.group(2));
+                    mWifiHalListener.onPasswordWrong(ifaceName, macAddress, reasonCode);
+                } else {
+                    Log.e(TAG, "Could not parse AP-STA-PASSWORD-WRONG event=" + eventStr);
+                }
             }
         }
 
