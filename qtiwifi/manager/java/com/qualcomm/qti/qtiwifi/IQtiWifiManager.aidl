@@ -57,4 +57,5 @@ interface IQtiWifiManager
     String doHostapdDriverCmd(String ifname, String command);
     String doSupplicantDriverCmd(String command);
     String doHostapdCtrlIfaceCmd(String ifname, String command);
+    String getWlanMacAddress(String ifname);
 }
