@@ -16,8 +16,14 @@ import android.os.RemoteException;
 import android.os.ServiceManager;
 import android.os.ServiceSpecificException;
 import android.util.Log;
+import android.os.ParcelFileDescriptor;
 
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     private static final String TAG = "QtiWifiCsiHalAidlImpl";
@@ -33,8 +39,9 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     /* Limit on number of registered csi callbacks to track and prevent potential memory leak */
     private static final int NUM_CSI_CALLBACKS_WTF_LIMIT = 20;
     private final HashMap<Integer, ICsiCallback> mRegisteredCsiCallbacks;
-    private ICsiCallback mCsiCallback;
-
+    private ByteArrayOutputStream mLargeCfrData;
+    private QtiWifiThreadRunner mThreadRunner;
+    private final ExecutorService mFileWriterService;
     private WificfrDeathRecipient mWificfrDeathRecipient;
     private class WificfrDeathRecipient implements DeathRecipient {
         @Override
@@ -53,14 +60,87 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         @Override
         public void onCfrDataAvailable(byte[] info) {
             Log.i(TAG, "onCfrDataAvailable called");
-            if (mCsiCallback != null) {
-                try {
-                    mCsiCallback.onCsiUpdate(info);
-                } catch (RemoteException e) {
-                    Log.e(TAG, "onCsiUpdate " + e);
+            mThreadRunner.run(() -> {
+                synchronized (mLock) {
+                    for (ICsiCallback callback : mRegisteredCsiCallbacks.values()) {
+                        try {
+                            callback.onCsiUpdate(info);
+                        } catch (RemoteException e) {
+                            Log.e(TAG, "onCsiUpdate failed for a callback", e);
+                        }
+                    }
+                }
+            });
+        }
+
+        @Override
+        public void onLargeCfrDataAvailable(byte[] info, boolean is_last_report) {
+            Log.i(TAG, "onLargeCfrDataAvailable data.size: " + info.length
+                  + ", is_last_report: " + is_last_report);
+            try {
+                if (mLargeCfrData == null) {
+                    mLargeCfrData = new ByteArrayOutputStream();
+                }
+                if (info != null) {
+                    mLargeCfrData.write(info);
                 }
 
+                if (is_last_report) {
+                    final byte[] dataToWrite = mLargeCfrData.toByteArray();
+                    final int dataSize = dataToWrite.length;
+                    mLargeCfrData = null; // Clear for next capture
+
+                    try {
+                        ParcelFileDescriptor[] pipe = ParcelFileDescriptor.createPipe();
+                        ParcelFileDescriptor readPfd = pipe[0];
+                        ParcelFileDescriptor writePfd = pipe[1];
+
+                        // Task 1: Write data using a dedicated thread for blocking I/O
+                        mFileWriterService.submit(() -> {
+                            try (FileOutputStream fos = new FileOutputStream(
+                                    writePfd.getFileDescriptor())) {
+                                fos.write(dataToWrite);
+                            } catch (IOException e) {
+                                Log.e(TAG, "Failed to write large CFR data", e);
+                            } finally {
+                                try {
+                                    writePfd.close();
+                                } catch (IOException e) {
+                                    Log.e(TAG, "Failed to close write PFD", e);
+                                }
+                            }
+                        });
+
+                        // Task 2: Dispatch the read-end using the non-blocking thread runner
+                        mThreadRunner.run(() -> {
+                            synchronized (mLock) {
+                                for (ICsiCallback cb : mRegisteredCsiCallbacks.values()) {
+                                    try {
+                                        cb.onLargeCsiData(readPfd);
+                                    } catch (RemoteException e) {
+                                        Log.e(TAG, "onLargeCsiData failed", e);
+                                    }
+                                }
+                            }
+                            try {
+                                readPfd.close();
+                            } catch (IOException e) {
+                                Log.e(TAG, "Failed to close read PFD", e);
+                            }
+                        });
+                    } catch (IOException e) {
+                        Log.e(TAG, "Failed to create pipe", e);
+                    }
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to buffer large CFR data", e);
+                mLargeCfrData = null; // Reset on error
             }
+        }
+
+        @Override
+        public void onCsiStopped(int reason) {
+            Log.i(TAG, "onCsiStopped called with reason: " + reason);
         }
 
         @Override
@@ -74,10 +154,12 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
         }
     }
 
-    public QtiWifiCsiHalAidlImpl() {
+    public QtiWifiCsiHalAidlImpl(QtiWifiThreadRunner threadRunner) {
         mWificfrDeathRecipient = new WificfrDeathRecipient();
         mIWificfrDataCallback = new WificfrDataCallback();
         mRegisteredCsiCallbacks = new HashMap<>();
+        mThreadRunner = threadRunner;
+        mFileWriterService = Executors.newSingleThreadExecutor();
     }
 
     /**
@@ -264,7 +346,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
             return;
         }
 
-        mCsiCallback = callback;
         mRegisteredCsiCallbacks.put(callbackIdentifier, callback);
 
         if (mRegisteredCsiCallbacks.size() > NUM_CSI_CALLBACKS_WTF_LIMIT) {
@@ -274,9 +355,6 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
     }
 
     public void unregisterCsiCallback(int callbackIdentifier) {
-        if (mCsiCallback != null)
-            mCsiCallback = null;
-
         mRegisteredCsiCallbacks.remove(callbackIdentifier);
     }
 
@@ -316,4 +394,3 @@ public class QtiWifiCsiHalAidlImpl implements IQtiWifiCsiHal {
        }
     }
 }
-
