@@ -9,7 +9,6 @@ import android.os.Handler;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 import android.util.Log;
 import android.content.ServiceConnection;
@@ -225,21 +224,7 @@ public class QtiWifiManager {
      *
      */
     public interface CsiCallback {
-        /**
-         * Callback that provides CSI/CFR data.
-         *
-         * @param info byte array containing the CSI data.
-         */
-        void onCsiUpdate(byte[] info);
-
-        /**
-         * Callback that provides a file descriptor for large CSI/CFR data.
-         * The application is responsible for reading the data from the file descriptor
-         * and closing it when done.
-         *
-         * @param pfd ParcelFileDescriptor containing the large CSI data.
-         */
-        default void onLargeCsiData(ParcelFileDescriptor pfd) {}
+        public abstract void onCsiUpdate(byte[] info);
     }
 
     /**
@@ -302,13 +287,6 @@ public class QtiWifiManager {
         public void onCsiUpdate(byte[] info) throws RemoteException {
             mHandler.post(() -> {
                 mCallback.onCsiUpdate(info);
-            });
-        }
-
-        @Override
-        public void onLargeCsiData(ParcelFileDescriptor pfd) throws RemoteException {
-            mHandler.post(() -> {
-                mCallback.onLargeCsiData(pfd);
             });
         }
     }
