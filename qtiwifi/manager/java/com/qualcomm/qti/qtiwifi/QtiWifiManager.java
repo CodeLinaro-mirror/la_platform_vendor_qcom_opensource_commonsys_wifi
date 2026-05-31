@@ -401,10 +401,10 @@ public class QtiWifiManager {
      * @param handler Handler to be used for callbacks.
      *
      */
-    public boolean startCsi(CsiCallback callback, Handler handler) {
+    public boolean startCsi(CsiCallback callback, Handler handler, String command) {
         registerCsiCallback(callback, handler);
         try {
-            mService.startCsi();
+            mService.startCsi(command);
             return true;
         } catch (RemoteException e) {
             Log.e(TAG, "startCsi: " + e);

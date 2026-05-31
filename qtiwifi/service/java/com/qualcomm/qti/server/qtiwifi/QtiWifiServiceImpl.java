@@ -509,12 +509,12 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
     /**
      * see {@link com.qualcomm.qti.qtiwifi.QtiWifiManager#startCsi}
      */
-    public void startCsi() {
+    public void startCsi(String command) {
         enforceChangePermission();
-        Log.i(TAG, "startCsi");
+        Log.i(TAG, "startCsi" + command);
         mQtiWifiThreadRunner.run(() -> mQtiWifiCsiHal.startCsi());
         mQtiWifiThreadRunner.run(() -> qtiSupplicantStaIfaceHal.doDriverCmd(
-                                "CSI start 0 1 data_mask=0x100"));
+                                 "CSI start 0 1 " + command));
     }
 
     /**
