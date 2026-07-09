@@ -1,34 +1,5 @@
-/* Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted (subject to the limitations in the
- * disclaimer below) provided that the following conditions are met:
- *
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *
- *   * Redistributions in binary form must reproduce the above
- *     copyright notice, this list of conditions and the following
- *     disclaimer in the documentation and/or other materials provided
- *     with the distribution.
- *
- *   * Neither the name of Qualcomm Innovation Center nor the names of its
- *     contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *
- * NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE
- * GRANTED BY THIS LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT
- * HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
- * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+/* Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
+ * SPDX-License-Identifier: BSD-3-Clause-Clear
  */
 
 package com.qualcomm.qti.qtiwifi;
@@ -46,7 +17,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import java.util.List;
 import com.qualcomm.qti.qtiwifi.ThermalData;
-
+import com.qualcomm.qti.qtiwifi.CsiConfiguration;
 /**
  * This Class provides few aspects of managing Wi-Fi specific operation after Wi-Fi is turned on (Wi-Fi modules are initialized).
  * This is primarily to be used by privileged/OEM application with "com.qualcomm.permission.QTI_WIFI" permission.
@@ -389,6 +360,184 @@ public class QtiWifiManager {
             mService.unregisterCsiCallback(callback.hashCode());
         } catch (RemoteException e) {
             throw e.rethrowFromSystemServer();
+        }
+    }
+
+    /**
+     * Schedules the start of CSI (Channel State Information) data collection after
+     * a specified duration.
+     * This method registers a CSI callback and schedules the start of CSI monitoring.
+     * Application must call atleast once {@link #setCsiConfiguration(CsiConfiguration)}
+     * so that it can use those settings to start CSI monitoring. The configuration
+     * is validated when {@link CsiConfiguration.Builder#build()} is called.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * QtiWifiManager qtiWifiManager = // get instance of QtiWifiManager
+     * CsiCallback csiCallback = new CsiCallback() {
+     *     @Override
+     *     public void onCsiUpdate(byte[] info) {
+     *         // Process CSI data
+     *     }
+     * };
+     * try {
+     *     CsiConfiguration config = new CsiConfiguration.Builder()
+     *         .setFrequency(5180)
+     *         .setReportIntervalMillis(1000)
+     *         .build();
+     *     qtiWifiManager.setCsiConfiguration(config);
+     *     Handler handler = new Handler();
+     *     int delayInSeconds = 10; // Start after 10 seconds
+     *     boolean success = qtiWifiManager.scheduleCsiStart(csiCallback, handler, delayInSeconds);
+     *     if (success) {
+     *         // CSI start is scheduled
+     *     } else {
+     *         // Failed to schedule CSI start
+     *     }
+     * } catch (IllegalArgumentException e) {
+     *     // Handle invalid configuration
+     * }
+     * }</pre>
+     *
+     * @param callback     CsiCallback for the application to receive updates.
+     * @param handler      Handler for callbacks. If null, the main thread is used.
+     * @param delaySeconds The delay in seconds after which to start CSI collection.
+     *                     Must be non-negative.
+     * @return {@code true} if the start was successfully scheduled, {@code false} otherwise.
+     * @throws IllegalArgumentException if delaySeconds is negative or if the
+     *         {@link CsiConfiguration} was built with invalid parameters.
+     */
+    public boolean scheduleCsiStart(CsiCallback callback, Handler handler,
+            int delaySeconds) {
+        if (delaySeconds < 0) {
+            throw new IllegalArgumentException("duration must be non-negative");
+        }
+        Log.v(TAG, "scheduleCsiStart: " + delaySeconds);
+        registerCsiCallback(callback, handler);
+        try {
+            mService.scheduleCsiStart(delaySeconds);
+            return true;
+        } catch (RemoteException e) {
+            Log.e(TAG, "scheduleCsiStart: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Schedules the stop of CSI (Channel State Information) data collection after a
+     * specified duration. This method unregisters the CSI callback after scheduling
+     * the stop.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * QtiWifiManager qtiWifiManager = // get instance of QtiWifiManager
+     * CsiCallback csiCallback = // the same callback instance used for starting
+     * int delayInSeconds = 60; // Stop after 60 seconds
+     * boolean success = qtiWifiManager.scheduleCsiStop(csiCallback, delayInSeconds);
+     * if (success) {
+     *     // CSI stop is scheduled
+     * } else {
+     *     // Failed to schedule CSI stop
+     * }
+     * }</pre>
+     *
+     * @param callback     The CsiCallback instance used to start the monitoring.
+     * @param delaySeconds The delay in seconds after which to stop CSI collection.
+     *                     Must be non-negative.
+     * @return {@code true} if the stop was successfully scheduled, {@code false} otherwise.
+     * @throws IllegalArgumentException if delaySeconds is negative.
+     */
+    public boolean scheduleCsiStop(CsiCallback callback, int delaySeconds) {
+        if (delaySeconds < 0) throw new IllegalArgumentException("duration must be non-negative");
+        Log.v(TAG, "scheduleCsiStop: " + delaySeconds);
+        try {
+            mService.scheduleCsiStop(delaySeconds);
+        } catch (RemoteException e) {
+            Log.e(TAG, "scheduleCsiStop: " + e);
+            return false;
+        }
+        unregisterCsiCallback(callback);
+        return true;
+    }
+
+    /**
+     * Sets the configuration for CSI (Channel State Information) monitoring.
+     * This configuration determines how CSI data is collected, including parameters
+     * like frequency, bandwidth, and MAC address filtering.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * QtiWifiManager qtiWifiManager = // get instance of QtiWifiManager
+     * List<MacAddress> macList = new ArrayList<>();
+     * macList.add(MacAddress.fromString("00:11:22:33:44:55"));
+     *
+     * try {
+     *     CsiConfiguration config = new CsiConfiguration.Builder()
+     *         .setIsActive(false)  // Passive mode
+     *         .setFrequency(5180)  // Channel 36 (5 GHz)
+     *         .setBandwidth(CsiConfiguration.CHANNEL_WIDTH_80MHZ)
+     *         .setNsMask(0x3)      // Spatial streams 1 and 2
+     *         .setFrameType(CsiConfiguration.FRAME_TYPE_DATA)
+     *         .setFrameSubType(0x0) // Data frames
+     *         .setMacAddresses(macList)
+     *         .setcsiDurationSeconds(60)
+     *         .setReportIntervalMillis(1000)
+     *         .build();
+     *
+     *     boolean success = qtiWifiManager.setCsiConfiguration(config);
+     *     if (success) {
+     *         // Configuration was set successfully
+     *     } else {
+     *         // Failed to set configuration
+     *     }
+     * } catch (IllegalArgumentException e) {
+     *     // Handle invalid configuration
+     * }
+     * }</pre>
+     *
+     * @param config The CsiConfiguration object with the desired settings.
+     * @return {@code true} if the configuration was successfully set, {@code false}
+     *         otherwise.
+     * @throws IllegalArgumentException if the provided config is null or invalid.
+     */
+    public boolean setCsiConfiguration(CsiConfiguration config) {
+        if (config == null) throw new IllegalArgumentException("config cannot be null");
+        // Log configuration details
+        Log.v(TAG, "setCsiConfiguration: " + config.toString());
+        try {
+            mService.setCsiConfiguration(config);
+            return true;
+        } catch (RemoteException e) {
+            Log.e(TAG, "setCsiConfiguration: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * Retrieves the current CSI (Channel State Information) monitoring configuration.
+     *
+     * <p>Example usage:
+     * <pre>{@code
+     * QtiWifiManager qtiWifiManager = // get instance of QtiWifiManager
+     * CsiConfiguration currentConfig = qtiWifiManager.getCsiConfiguration();
+     * if (currentConfig != null) {
+     *     // Use the current configuration
+     *     Log.d(TAG, "Current CSI config: " + currentConfig.toString());
+     * } else {
+     *     // Failed to retrieve configuration
+     * }
+     * }</pre>
+     *
+     * @return The current {@link CsiConfiguration}, or {@code null} if it could not be
+     *         retrieved.
+     */
+    public CsiConfiguration getCsiConfiguration() {
+        Log.v(TAG, "getCsiConfiguration");
+        try {
+            return mService.getCsiConfiguration();
+        } catch (RemoteException e) {
+            Log.e(TAG, "getCsiConfiguration: " + e);
+            return null;
         }
     }
 
