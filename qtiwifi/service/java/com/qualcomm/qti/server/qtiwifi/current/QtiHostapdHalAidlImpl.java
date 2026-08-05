@@ -248,6 +248,9 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
 
             reply.value = "";
 
+            if (!checkhostapdVendorAndLogFailure(methodStr)) {
+                return reply.value;
+            }
             try {
                 reply.value = mIHostapdVendor.doDriverCmd(iface, "DRIVER " + command);
             } catch (RemoteException e) {
@@ -276,6 +279,9 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
 
             reply.value = "";
 
+            if (!checkhostapdVendorAndLogFailure(methodStr)) {
+                return reply.value;
+            }
             try {
                 reply.value = mIHostapdVendor.doDriverCmd(iface, command);
             } catch (RemoteException e) {
@@ -299,6 +305,9 @@ public class QtiHostapdHalAidlImpl implements IQtiHostapdHal {
             String methodStr = "listVendorInterfaces";
             if (mActiveInterfaces != null && mActiveInterfaces.size() > 0) {
                 return (String[])mActiveInterfaces.toArray();
+            }
+            if (!checkhostapdVendorAndLogFailure(methodStr)) {
+                return null;
             }
             try {
                 return mIHostapdVendor.listVendorInterfaces();
