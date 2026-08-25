@@ -44,6 +44,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.OVERRIDE_WIFI_CONFIG" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
     <application
         android:allowBackup="false"
@@ -55,7 +57,8 @@
         <!-- defining the service class here -->
         <service android:name="com.qualcomm.qti.server.qtiwifi.QtiWifiService"
                  android:exported="true"
-                 android:enabled="true">
+                 android:enabled="true"
+                 android:singleUser="true">
             <intent-filter>
                 <action android:name="com.qualcomm.qti.server.qtiwifi.QtiWifiService"/>
             </intent-filter>
