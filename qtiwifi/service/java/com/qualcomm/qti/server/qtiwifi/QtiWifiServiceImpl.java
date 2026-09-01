@@ -460,6 +460,8 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         }
     }
 
+    //return interface name will be "wlanX" or "swlanX"
+    //Note: only return wlan interface names which are up status.
     public List<String> getAvailableInterfaces() {
         enforceAccessPermission();
         List<String> ifaces = new ArrayList<String>();
@@ -473,6 +475,18 @@ public final class QtiWifiServiceImpl extends IQtiWifiManager.Stub {
         }
 
         return ifaces;
+    }
+
+    //return String format will be "Macaddr = xx:xx:xx:xx:xx:xx"
+    //or "" for failure
+    public String getWlanMacAddress(String ifname) {
+        enforceAccessPermission();
+        if (ifname == null) {
+            throw new IllegalArgumentException("ifname cannot be null");
+        }
+
+        String mMacAddress = qtiWifiHal.doQtiWifiCmd(ifname, "DRIVER MACADDR");
+        return mMacAddress;
     }
 
     private boolean setSuccess(String reply) {

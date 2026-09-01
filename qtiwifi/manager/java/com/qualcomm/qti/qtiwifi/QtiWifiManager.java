@@ -433,4 +433,19 @@ public class QtiWifiManager {
         unregisterCsiCallback(callback);
         return true;
     }
+
+    /**
+     * API to get MAC address of wlan interface ifname
+     *
+     * @param ifname Name of the interface.
+     */
+    public String getWlanMacAddress(String ifname) {
+        try {
+            return mService.getWlanMacAddress(ifname);
+        } catch (RemoteException e) {
+            Log.e(TAG, "getWlanMacAddress: " + e);
+            return null;
+        }
+    }
+
 }

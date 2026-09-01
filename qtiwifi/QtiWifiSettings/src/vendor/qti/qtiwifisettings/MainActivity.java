@@ -94,6 +94,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
     private static CarPlayIEData mCarPlayIEData = new CarPlayIEData();
 
     private static final String COMMAND_GET_AVAILABLE_INTERFACES = "list-interfaces";
+    private static final String COMMAND_GET_MAC_ADDRESS = "get-mac-address";
     private static final String COMMAND_GET_THERMAL_INFO = "get-thermal-info";
     private static final String COMMAND_REGISTER_VENDOR_EVENT_CALLBACK =
                                                  "register-vendor-event-callback";
@@ -251,6 +252,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
                         Log.e(TAG, "Failed to open file");
                     }
                 }
+            } else if (params[0].equals(COMMAND_GET_MAC_ADDRESS)) {
+                reply = getWlanMacAddress(params);
             } else {
                 reply = COMMAND_RESULT_INVALID_COMMAND;
             }
@@ -472,6 +475,17 @@ public class MainActivity extends Activity implements View.OnClickListener {
         }
 
         return COMMAND_RESULT_SUCCESS;
+    }
+
+    private String getWlanMacAddress(String[] params) {
+        if (params.length < 2) {
+            return COMMAND_RESULT_INVALID_ARGS;
+        }
+        String macAddress = mUniqueInstance.getWlanMacAddress(params[1]);
+        if (macAddress == null || macAddress.isEmpty()) {
+            return COMMAND_RESULT_FAILED;
+        }
+        return macAddress;
     }
 
     public static void unbindService(Context context) {
